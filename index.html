@@ -21,19 +21,23 @@
     .g{ background:#0f3; color:#061; }
     .y{ background:#ffea5a !important; color:#000 !important; }
     .r{ background:#b22; color:#fee; }
-    /* WTD (muted) buckets — darker/desaturated */
-    .gW{ background:#0cbd0c; color:#032; }
-    .yW{ background:#e2cf3f; color:#000; }
-    .rW{ background:#8f1f1f; color:#fee; }
+    /* WTD (muted) buckets — ~50% darker */
+    .gW{ background:#086e08; color:#e0f7e0; }   /* darker green */
+    .yW{ background:#9a8c24; color:#000; }      /* darker yellow */
+    .rW{ background:#541212; color:#fee; }      /* darker red */
+    .box.gW{background:#086e08}.box.yW{background:#9a8c24}.box.rW{background:#541212}
     .legend{display:flex;gap:8px;align-items:center}
     .box{width:14px;height:14px;border-radius:3px;border:1px solid #0003}
     .box.g{background:#0f3}.box.y{background:#ffea5a}.box.r{background:#b22}
-    .box.gW{background:#0cbd0c}.box.yW{background:#e2cf3f}.box.rW{background:#8f1f1f}
     .small{font-size:12px}
     td.label{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;min-width:180px}
     th:first-child,td:first-child{max-width:220px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     select{background:#0e141b;color:var(--text);border:1px solid #2b3a4c;border-radius:8px;padding:6px 8px}
     .wtdNote{color:var(--muted);font-size:12px;margin-left:8px}
+      
+    /* Make WTD column clearly separated */
+    .wtdCol { border-left:6px solid #2b3a4c !important; }  /* 2–3× thicker left rule */
+    thead th.wtdCol { border-left-color:#3a4a60 !important; } /* slight contrast in header */
   </style>
 </head>
 <body>
@@ -78,7 +82,7 @@
       <label class="muted small">Lookback</label>
       <select id="lookbackN">
         <option>2</option><option>4</option><option>8</option>
-        <option selected>12</option><option>16</option><option>18</option>
+        <option selected>12</option><option>16</option><option>17</option>
       </select>
 
       <label class="muted small">Half‑life</label>
@@ -88,6 +92,8 @@
       </select>
 
       <button id="btnRefresh">Refresh</button>
+
+
     </div>
   </header>
 
@@ -571,8 +577,8 @@ function render(){
   });
 
   const th=['<th>Group</th>','<th>Ticker</th>']
-            .concat(wkArr.map(w=>`<th class="cell">${w.slice(5)}</th>`))
-            .concat([`<th class="cell">WTD</th>`]).join('');
+    .concat(wkArr.map(w=>`<th class="cell">${w.slice(5)}</th>`))
+    .concat([`<th class="cell wtdCol">WTD</th>`]).join('');
   let html = `<table><thead><tr>${th}</tr></thead><tbody>`;
 
   for(const R of rows){
@@ -585,7 +591,7 @@ function render(){
     const wv=R.wtdVal; let wcls='';
     if (wv==null) wcls='';
     else wcls=(wv>=80?'gW':wv>=60?'yW':'rW');
-    html += `<td class="cell ${wcls}">${wv==null?'–':wv}</td>`;
+    html += `<td class="cell wtdCol ${wcls}">${wv==null?'–':wv}</td>`;
     html += `</tr>`;
   }
 
