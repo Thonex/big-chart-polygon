@@ -38,6 +38,12 @@
     /* Make WTD column clearly separated */
     .wtdCol { border-left:6px solid #2b3a4c !important; }  /* 2–3× thicker left rule */
     thead th.wtdCol { border-left-color:#3a4a60 !important; } /* slight contrast in header */
+
+    /* Hide the Refresh button — now triggered automatically by
+       clicking the Sectors or Industry Groups pills */
+    #btnRefresh {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -87,8 +93,8 @@
 
       <label class="muted small">Half‑life</label>
       <select id="halfLife">
-        <option>1</option><option>2</option><option>4</option>
-        <option selected>7</option><option>10</option><option>12</option><option>16</option>
+        <option>1</option><option>2</option><option selected>4</option>
+        <option>7</option><option>10</option><option>12</option><option>16</option>
       </select>
 
       <button id="btnRefresh">Refresh</button>
@@ -241,14 +247,62 @@ if (halfSel) halfSel.value=String(HALF_LIFE);
 updateAvgOptionLabel();
 reflectMode();
 
-pillS.onclick=()=>{ setActive('sectors'); };
-pillI.onclick=()=>{ setActive('industries'); };
-modeV1.onclick=()=>{ mode='v1'; localStorage.setItem(MODE_KEY,mode); reflectMode(); render(); };
-modeV2.onclick=()=>{ mode='v2'; localStorage.setItem(MODE_KEY,mode); reflectMode(); render(); };
-btnRefresh.onclick=()=>loadActive();
-sortSel.onchange=()=>render();
-lookSel.onchange=async()=>{ LOOKBACK_N=+lookSel.value; localStorage.setItem(N_KEY,LOOKBACK_N); updateAvgOptionLabel(); await loadActive(); };
-halfSel.onchange=()=>{ HALF_LIFE=+halfSel.value; localStorage.setItem(H_KEY,HALF_LIFE); recomputeComposite(); render(); };
+/* ---------------- Refresh Pills on click ---------------- */
+let isLoading = false;
+
+async function loadActive(){
+  if (isLoading) return;
+  isLoading = true;
+  try {
+    statusEl.textContent = `Loading ${active}…`;
+    const url = DATA_URL[active];
+    if (!url) { alert(`No URL configured for ${active}`); return; }
+    await loadData(url); // or buildHeatmap(url) depending on your existing function
+  } finally {
+    isLoading = false;
+    statusEl.textContent = '';
+  }
+}
+
+function setActive(which){
+  active = which === 'sectors' ? 'sectors' : 'industries';
+  localStorage.setItem('heatmap_active', active);
+  pillS.classList.toggle('active', active === 'sectors');
+  pillI.classList.toggle('active', active === 'industries');
+  loadActive(); // always fetch when switching
+}
+
+function onPillClick(which){
+  if (active === which) {
+    loadActive();        // refresh current dataset
+  } else {
+    setActive(which);    // switch + fetch
+  }
+}
+
+pillS.onclick = () => onPillClick('sectors');
+pillI.onclick = () => onPillClick('industries');
+
+modeV1.onclick = () => { mode='v1'; localStorage.setItem(MODE_KEY, mode); reflectMode(); render(); };
+modeV2.onclick = () => { mode='v2'; localStorage.setItem(MODE_KEY, mode); reflectMode(); render(); };
+
+btnRefresh.onclick = () => loadActive();
+
+sortSel.onchange = () => render();
+
+lookSel.onchange = async () => {
+  LOOKBACK_N = +lookSel.value;
+  localStorage.setItem(N_KEY, LOOKBACK_N);
+  updateAvgOptionLabel();
+  await loadActive();
+};
+
+halfSel.onchange = () => {
+  HALF_LIFE = +halfSel.value;
+  localStorage.setItem(H_KEY, HALF_LIFE);
+  recomputeComposite();
+  render();
+};
 
 // --- Toggle for final re-percentile after blend (persistent) ---
 const pctToggle = document.createElement('button');
