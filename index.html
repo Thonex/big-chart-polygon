@@ -280,8 +280,8 @@ function onPillClick(which){
   }
 }
 
-pillS.onclick = () => onPillClick('sectors');
-pillI.onclick = () => onPillClick('industries');
+pillS.onclick = () => { setActive('sectors'); loadActive(); };
+pillI.onclick = () => { setActive('industries'); loadActive(); };
 
 modeV1.onclick = () => { mode='v1'; localStorage.setItem(MODE_KEY, mode); reflectMode(); render(); };
 modeV2.onclick = () => { mode='v2'; localStorage.setItem(MODE_KEY, mode); reflectMode(); render(); };
