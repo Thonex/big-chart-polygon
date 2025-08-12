@@ -126,9 +126,13 @@ let RE_PERCENTILE_AFTER_BLEND = localStorage.getItem('rePctBlend') === 'true';
 
 /* ---------------- Data sources (CSV) ---------------- */
 const DATA_URL = {
-  sectors: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRb0KGQYJoXfcLSE9_HUGVV513UrBMn3M5DhtqJHDyXgYLamBBsKQDwo7rR6Lvu-dTvU82ex9nt2igO/pub?gid=0&single=true&output=csv',
+  // 11 SPDR sector ETFs (sheet tab “Sectors”)
+  sectors: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwCu-AtG33jHIxKaVpP9kCCC3R_oQfvK6kumzG3WuUZGCwpSp1d1MoZxV3ESg7--NveInP2zEA2QVL/pub?gid=817118453&single=true&output=csv',
+
+  // Industry groups (sheet tab “Industry Groups”)
   industries: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwCu-AtG33jHIxKaVpP9kCCC3R_oQfvK6kumzG3WuUZGCwpSp1d1MoZxV3ESg7--NveInP2zEA2QVL/pub?gid=0&single=true&output=csv'
 };
+
 
 /* ---------------- Persistence keys ---------------- */
 const MODE_KEY='heatmap_mode', N_KEY='heatmap_lookback_weeks', H_KEY='heatmap_half_life';
