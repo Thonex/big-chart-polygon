@@ -133,7 +133,6 @@ const DATA_URL = {
   industries: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwCu-AtG33jHIxKaVpP9kCCC3R_oQfvK6kumzG3WuUZGCwpSp1d1MoZxV3ESg7--NveInP2zEA2QVL/pub?gid=0&single=true&output=csv'
 };
 
-
 /* ---------------- Persistence keys ---------------- */
 const MODE_KEY='heatmap_mode', N_KEY='heatmap_lookback_weeks', H_KEY='heatmap_half_life';
 
@@ -141,17 +140,76 @@ const MODE_KEY='heatmap_mode', N_KEY='heatmap_lookback_weeks', H_KEY='heatmap_ha
 const LABELS = {
   sectors: { XLB:'Materials', XLE:'Energy', XLF:'Financials', XLI:'Industrials', XLK:'Information Technology', XLP:'Consumer Staples', XLU:'Utilities', XLV:'Health Care', XLY:'Consumer Discretionary', XLRE:'Real Estate', XLC:'Communication Services' },
   industries: {
-    XOP:'Energy – Oil & Gas E&P', OIH:'Energy – Oil Services', FCG:'Energy – Natural Gas',
-    XME:'Materials – Metals & Mining', XLB:'Materials – Broad',
-    ITA:'Industrials – Aerospace & Defense', IYT:'Industrials – Transportation', PAVE:'Industrials – Infrastructure', XLI:'Industrials – Broad',
-    ITB:'Consumer Discretionary – Home Construction', AUTO:'Consumer Discretionary – Autos/EV (composite)', XRT:'Consumer Discretionary – Retail', XLY:'Consumer Discretionary – Broad',
-    XLP:'Consumer Staples – Broad', VDC:'Consumer Staples – Broad (Vanguard)',
-    IBB:'Health Care – Biotechnology', IHI:'Health Care – Medical Devices', PPH:'Health Care – Pharmaceuticals', XLV:'Health Care – Broad',
-    KBE:'Financials – Banks', KRE:'Financials – Regional Banks', XLF:'Financials – Broad',
-    XLRE:'Real Estate – Select Sector REITs', VNQ:'Real Estate – Broad', IYR:'Real Estate – Broad (alt)',
-    SOXX:'Information Technology – Semiconductors', IGV:'Information Technology – Software', FDN:'Information Technology – Internet', CIBR:'Information Technology – Cybersecurity', XLK:'Information Technology – Broad',
-    XLC:'Communication Services – Broad', VOX:'Communication Services – Telecom',
-    XLU:'Utilities – Broad', FUTY:'Utilities – Broad (alt)'
+    // Energy
+    XOP:'Energy – Oil & Gas E&P',
+    OIH:'Energy – Oil Services',
+    FCG:'Energy – Natural Gas',
+    TAN:'Energy – Solar',
+
+    // Materials
+    XME:'Materials – Metals & Mining',
+    XLB:'Materials – Broad',
+    GDX:'Materials – Gold Miners',
+    SLX:'Materials – Steel',
+    PICK:'Materials – Metals & Mining (global)',
+
+    // Industrials
+    ITA:'Industrials – Aerospace & Defense',
+    IYT:'Industrials – Transportation',
+    PAVE:'Industrials – Infrastructure',
+    XLI:'Industrials – Broad',
+    JETS:'Industrials – Airlines',
+    SEA:'Industrials – Shipping',
+    VIS:'Industrials – Broad (alt)',
+
+    // Consumer Discretionary
+    ITB:'Consumer Disc. – Home Construction',
+    AUTO:'Consumer Disc. – Autos/EV (composite)',
+    XRT:'Consumer Disc. – Retail',
+    XLY:'Consumer Disc. – Broad',
+    XHB:'Consumer Disc. – Homebuilders (alt)',
+    BJK:'Consumer Disc. – Gaming & Casinos',
+
+    // Consumer Staples
+    XLP:'Consumer Staples – Broad',
+    VDC:'Consumer Staples – Broad (Vanguard)',
+
+    // Health Care
+    IBB:'Health Care – Biotechnology',
+    IHI:'Health Care – Medical Devices',
+    PPH:'Health Care – Pharmaceuticals',
+    XLV:'Health Care – Broad',
+    IHE:'Health Care – Pharmaceuticals (alt)',
+    IHF:'Health Care – Providers',
+
+    // Financials
+    KBE:'Financials – Banks',
+    KRE:'Financials – Regional Banks',
+    XLF:'Financials – Broad',
+    KIE:'Financials – Insurance',
+    IAI:'Financials – Brokers/Exchanges',
+    REM:'Real Estate – Mortgage REITs',   // lives with RE but sourced from your list
+
+    // Real Estate
+    XLRE:'Real Estate – Select Sector REITs',
+    VNQ:'Real Estate – Broad',
+    IYR:'Real Estate – Broad (alt)',
+
+    // Information Technology
+    SOXX:'Information Tech – Semiconductors',
+    IGV:'Information Tech – Software',
+    FDN:'Information Tech – Internet',
+    CIBR:'Information Tech – Cybersecurity',
+    XLK:'Information Techn – Broad',
+
+    // Communication Services
+    XLC:'Communication Services – Broad',
+    VOX:'Communication Services – Telecom',
+
+    // Utilities
+    XLU:'Utilities – Broad',
+    FUTY:'Utilities – Broad (alt)',
+    PHO:'Utilities – Water'
   }
 };
 
