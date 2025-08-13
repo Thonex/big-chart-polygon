@@ -17,44 +17,43 @@
     th,td{border:1px solid #1b2733;padding:6px 8px;text-align:center}
     th{position:sticky;top:58px;background:#0f1722;z-index:1}
     .cell{ min-width:18px; padding:4px 6px; }
+
     /* Historical percentile buckets */
     .g{ background:#0f3; color:#061; }
     .y{ background:#ffea5a !important; color:#000 !important; }
     .r{ background:#b22; color:#fee; }
+
     /* WTD (muted) buckets — ~50% darker */
-    .gW{ background:#086e08; color:#e0f7e0; }   /* darker green */
-    .yW{ background:#9a8c24; color:#000; }      /* darker yellow */
-    .rW{ background:#541212; color:#fee; }      /* darker red */
-    .box.gW{background:#086e08}.box.yW{background:#9a8c24}.box.rW{background:#541212}
+    .gW{ background:#086e08; color:#e0f7e0; }
+    .yW{ background:#9a8c24; color:#000; }
+    .rW{ background:#541212; color:#fee; }
     .legend{display:flex;gap:8px;align-items:center}
     .box{width:14px;height:14px;border-radius:3px;border:1px solid #0003}
     .box.g{background:#0f3}.box.y{background:#ffea5a}.box.r{background:#b22}
+    .box.gW{background:#086e08}.box.yW{background:#9a8c24}.box.rW{background:#541212}
     .small{font-size:12px}
     td.label{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;min-width:180px}
     th:first-child,td:first-child{max-width:220px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     select{background:#0e141b;color:var(--text);border:1px solid #2b3a4c;border-radius:8px;padding:6px 8px}
     .wtdNote{color:var(--muted);font-size:12px;margin-left:8px}
-      
-    /* Make WTD column clearly separated */
-    .wtdCol { border-left:6px solid #2b3a4c !important; }  /* 2–3× thicker left rule */
-    thead th.wtdCol { border-left-color:#3a4a60 !important; } /* slight contrast in header */
 
-    /* Hide the Refresh button — now triggered automatically by
-       clicking the Sectors or Industry Groups pills */
-    #btnRefresh {
-      display: none !important;
-    }
+    /* Make WTD column clearly separated */
+    .wtdCol{ border-left:6px solid #2b3a4c !important; }  /* 2–3× thicker left rule */
+    thead th.wtdCol{ border-left-color:#3a4a60 !important; } /* slight contrast in header */
+
+    /* Sparklines */
+    td.spark{padding:0 6px; min-width:72px}
+    td.spark svg{display:block;width:72px;height:18px}
+    td.spark path.line{fill:none;stroke:#8ab4ff;stroke-width:1.25}
+    td.spark circle.dot{r:1.7;fill:#8ab4ff}
+
+    /* Hide the Refresh button — pills do the loading now */
+    #btnRefresh{ display:none !important; }
   </style>
 </head>
 <body>
 
-  <!-- ============================ Controls ============================
-       - Dataset pills (Sectors / Industry Groups)
-       - Mode: CMF-only vs Composite (Price+Flow)
-       - Sort, Lookback (weeks), EWMA half-life (weeks)
-       NOTE: Historical columns are PREVIOUS‑WEEK basis. WTD is a muted
-             snapshot and does not affect ordering or historical values.
-  -->
+  <!-- Controls -->
   <header>
     <div class="row">
       <span class="pill" id="pillSectors">Sectors</span>
@@ -93,13 +92,11 @@
 
       <label class="muted small">Half‑life</label>
       <select id="halfLife">
-        <option>1</option><option>2</option><option selected>4</option>
-        <option>7</option><option>10</option><option>12</option><option>16</option>
+        <option>1</option><option>2</option><option>4</option>
+        <option selected>7</option><option>10</option><option>12</option><option>16</option>
       </select>
 
       <button id="btnRefresh">Refresh</button>
-
-
     </div>
   </header>
 
@@ -111,44 +108,26 @@
 <script>
 /* ========================================================================
    Big Chart v22E — Percentile‑then‑Blend Composite
-   ------------------------------------------------------------------------
-   Historical weekly pipeline (previous Friday close):
-     1) Aggregate daily OHLCV → weekly buckets (UTC Fri).
-     2) Flow leg:
-        - Daily MFM = ((C−L) − (H−C)) / (H−L), winsorized to [-1,+1].
-        - Daily MFV = MFM × Volume (skip zero/NaN volume).
-        - Weekly ΣMFV, ΣVol; smooth via EWMA half-life H:
-          Flow_t = EWMA(ΣMFV)_t / EWMA(ΣVol)_t  (gently clamped to [-1,+1]).
-     3) Price leg:
-        - Weekly log return r_t = ln(C_t / C_{t−1})
-        - Smooth via EWMA with the same half-life H.
-     4) **Cross‑section percentile each week for BOTH legs separately.**
-     5) **Blend in percentile space**: Composite_raw = 0.65*FlowPct + 0.35*PricePct
-     6) Optional: **Re‑percentile** Composite_raw per week to force a full ranking.
-   WTD column:
-     - Provisional one‑step EWMA update with this week’s partial ΣMFV/ΣVol
-       and price ln(C_today / C_prevFri), then percentile‑blend‑repercentile
-       for a single snapshot; “–” if no bars yet.
+   (Math/logic unchanged)
   =======================================================================*/
 
-/* ---------------- Config toggles (analyst‑friendly) ---------------- */
-const BLEND_FLOW = 0.65;     // weight of flow leg in composite
-const BLEND_PRICE = 0.35;    // weight of price leg
+/* ---------------- Config toggles ---------------- */
+const BLEND_FLOW = 0.65;
+const BLEND_PRICE = 0.35;
 let RE_PERCENTILE_AFTER_BLEND = localStorage.getItem('rePctBlend') === 'true';
 
 /* ---------------- Data sources (CSV) ---------------- */
 const DATA_URL = {
   // 11 SPDR sector ETFs (sheet tab “Sectors”)
   sectors: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwCu-AtG33jHIxKaVpP9kCCC3R_oQfvK6kumzG3WuUZGCwpSp1d1MoZxV3ESg7--NveInP2zEA2QVL/pub?gid=817118453&single=true&output=csv',
-
   // Industry groups (sheet tab “Industry Groups”)
   industries: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwCu-AtG33jHIxKaVpP9kCCC3R_oQfvK6kumzG3WuUZGCwpSp1d1MoZxV3ESg7--NveInP2zEA2QVL/pub?gid=0&single=true&output=csv'
 };
 
-/* ---------------- Persistence keys ---------------- */
+/* ---------------- Persistence ---------------- */
 const MODE_KEY='heatmap_mode', N_KEY='heatmap_lookback_weeks', H_KEY='heatmap_half_life';
 
-/* ---------------- Labels (first column) ---------------- */
+/* ---------------- Labels ---------------- */
 const LABELS = {
   sectors: { XLB:'Materials', XLE:'Energy', XLF:'Financials', XLI:'Industrials', XLK:'Information Technology', XLP:'Consumer Staples', XLU:'Utilities', XLV:'Health Care', XLY:'Consumer Discretionary', XLRE:'Real Estate', XLC:'Communication Services' },
   industries: {
@@ -247,64 +226,42 @@ if (halfSel) halfSel.value=String(HALF_LIFE);
 updateAvgOptionLabel();
 reflectMode();
 
-/* ---------------- Refresh Pills on click ---------------- */
-let isLoading = false;
-
+/* ---------------- Loading ---------------- */
+let isLoading=false;
 async function loadActive(){
   if (isLoading) return;
   isLoading = true;
-  try {
+  try{
     statusEl.textContent = `Loading ${active}…`;
-    const url = DATA_URL[active];
-    if (!url) { alert(`No URL configured for ${active}`); return; }
-    await loadData(url); // or buildHeatmap(url) depending on your existing function
+    const url=DATA_URL[active]; if(!url){ alert(`No URL configured for ${active}`); return; }
+    await buildHeatmap(url);
   } finally {
-    isLoading = false;
-    statusEl.textContent = '';
+    isLoading=false;
+    statusEl.textContent='';
   }
 }
 
 function setActive(which){
-  active = which === 'sectors' ? 'sectors' : 'industries';
-  localStorage.setItem('heatmap_active', active);
-  pillS.classList.toggle('active', active === 'sectors');
-  pillI.classList.toggle('active', active === 'industries');
-  loadActive(); // always fetch when switching
+  active = which==='sectors' ? 'sectors' : 'industries';
+  localStorage.setItem('heatmap_active',active);
+  pillS.classList.toggle('active',active==='sectors');
+  pillI.classList.toggle('active',active==='industries');
+  render();                  // re-render while new data is loading
+  loadActive();              // fetch
 }
 
-function onPillClick(which){
-  if (active === which) {
-    loadActive();        // refresh current dataset
-  } else {
-    setActive(which);    // switch + fetch
-  }
-}
+/* pill behavior: click same pill → refresh; click other pill → switch+load */
+pillS.onclick=()=>{ active==='sectors' ? loadActive() : setActive('sectors'); };
+pillI.onclick=()=>{ active==='industries' ? loadActive() : setActive('industries'); };
 
-pillS.onclick = () => { setActive('sectors'); loadActive(); };
-pillI.onclick = () => { setActive('industries'); loadActive(); };
+modeV1.onclick=()=>{ mode='v1'; localStorage.setItem(MODE_KEY,mode); reflectMode(); render(); };
+modeV2.onclick=()=>{ mode='v2'; localStorage.setItem(MODE_KEY,mode); reflectMode(); render(); };
+btnRefresh.onclick=()=>loadActive();
+sortSel.onchange=()=>render();
+lookSel.onchange=async()=>{ LOOKBACK_N=+lookSel.value; localStorage.setItem(N_KEY,LOOKBACK_N); updateAvgOptionLabel(); await loadActive(); };
+halfSel.onchange=()=>{ HALF_LIFE=+halfSel.value; localStorage.setItem(H_KEY,HALF_LIFE); recomputeComposite(); render(); };
 
-modeV1.onclick = () => { mode='v1'; localStorage.setItem(MODE_KEY, mode); reflectMode(); render(); };
-modeV2.onclick = () => { mode='v2'; localStorage.setItem(MODE_KEY, mode); reflectMode(); render(); };
-
-btnRefresh.onclick = () => loadActive();
-
-sortSel.onchange = () => render();
-
-lookSel.onchange = async () => {
-  LOOKBACK_N = +lookSel.value;
-  localStorage.setItem(N_KEY, LOOKBACK_N);
-  updateAvgOptionLabel();
-  await loadActive();
-};
-
-halfSel.onchange = () => {
-  HALF_LIFE = +halfSel.value;
-  localStorage.setItem(H_KEY, HALF_LIFE);
-  recomputeComposite();
-  render();
-};
-
-// --- Toggle for final re-percentile after blend (persistent) ---
+/* Re‑percentile toggle pill */
 const pctToggle = document.createElement('button');
 pctToggle.textContent = RE_PERCENTILE_AFTER_BLEND ? 'Re-%: ON' : 'Re-%: OFF';
 pctToggle.className = 'pill';
@@ -312,23 +269,15 @@ pctToggle.onclick = () => {
   RE_PERCENTILE_AFTER_BLEND = !RE_PERCENTILE_AFTER_BLEND;
   localStorage.setItem('rePctBlend', RE_PERCENTILE_AFTER_BLEND);
   pctToggle.textContent = RE_PERCENTILE_AFTER_BLEND ? 'Re-%: ON' : 'Re-%: OFF';
-  recomputeComposite();  // Recalculate composites with new setting
-  render();              // Re-render the table
+  recomputeComposite(); render();
 };
 document.querySelector('header .row:last-child').appendChild(pctToggle);
 
 function reflectMode(){ modeV1.classList.toggle('active',mode==='v1'); modeV2.classList.toggle('active',mode==='v2'); }
 function updateAvgOptionLabel(){ if (optAvg) optAvg.textContent=`${LOOKBACK_N}\u2011week avg (desc)`; }
-function setActive(which){
-  active = which==='sectors' ? 'sectors' : 'industries';
-  localStorage.setItem('heatmap_active',active);
-  pillS.classList.toggle('active',active==='sectors');
-  pillI.classList.toggle('active',active==='industries');
-  if (window._heat) render();
-}
 function flash(msg){ statusEl.textContent=msg; setTimeout(()=>statusEl.textContent='',3000); }
 
-/* ---------------- Date/Math helpers ---------------- */
+/* ---------------- Date/Math helpers (unchanged) ---------------- */
 function weekKeyPrev(dt){ const x=new Date(dt); const wd=x.getUTCDay(); const back=(wd-5+7)%7; x.setUTCDate(x.getUTCDate()-back); x.setUTCHours(0,0,0,0); return x.toISOString().slice(0,10); }
 function weekKeyNext(dt){ const x=new Date(dt); const wd=x.getUTCDay(); const fwd=(5-wd+7)%7; x.setUTCDate(x.getUTCDate()+fwd); x.setUTCHours(0,0,0,0); return x.toISOString().slice(0,10); }
 function lambdaFromHalfLife(H){ return Math.pow(0.5, 1/Math.max(1e-9,H)); }
@@ -336,16 +285,8 @@ function clamp(x,lo,hi){ return Math.max(lo,Math.min(hi,x)); }
 function ewma(arr,lambda){ let s=null; const out={}; for(const {w,value} of arr){ const v=Number.isFinite(value)?value:null; if(v==null){ if(s!=null) out[w]=s; continue; } s=(s==null)?v:(lambda*s+(1-lambda)*v); out[w]=s; } return out; }
 
 /* ======================================================================
-   Data build:
-   - Parse CSV → daily bars.
-   - Aggregate into previous‑Friday weekly buckets.
-   - Build current‑week partials for WTD.
+   Data build (unchanged except for status text)
 ====================================================================== */
-async function loadActive(){
-  const url=DATA_URL[active]; if(!url){ alert(`No URL configured for ${active}`); return; }
-  await buildHeatmap(url);
-}
-
 async function buildHeatmap(url){
   try{
     const needsProxy=location.protocol==='file:';
@@ -360,31 +301,28 @@ async function buildHeatmap(url){
     for(const k of need){ if(!header.includes(k)) throw new Error('Missing header: '+k); }
     const idx=Object.fromEntries(header.map((h,i)=>[h,i]));
 
-    // 1) Collect daily bars
+    // daily → per-ticker arrays
     const byT={};
     for(const r of rows){
       const t=(r[idx.ticker]||'').toUpperCase();
       const d=new Date(r[idx.date]);
       const o=+r[idx.open], h=+r[idx.high], l=+r[idx.low], c=+r[idx.close], v=+r[idx.volume];
       if(!t || !Number.isFinite(c)||!Number.isFinite(h)||!Number.isFinite(l)||!Number.isFinite(v)) continue;
-      if(h<l) continue; // drop broken bar; allow doji (h===l)
+      if(h<l) continue;
       (byT[t] ||= []).push({d,o,h,l,c,v});
     }
     for(const t in byT) byT[t].sort((a,b)=>a.d-b.d);
 
-    // 2) Weekly aggregation + WTD partials
+    // weekly aggregation + WTD partials
     const weeks=new Set();
-    const wkByT={};   // ticker -> week -> { cmf, retLog, mfvW, volW, close }
-    const wtdByT={};  // ticker -> { hasData, mfvWTD, volWTD, todayClose, prevFriClose }
-    const today=new Date();
-    const curWeekKey=weekKeyNext(today);
+    const wkByT={}, wtdByT={};
+    const today=new Date(), curWeekKey=weekKeyNext(today);
 
     for(const t in byT){
       const weekMap={};
       let prevFriClose=null;
       let acc={ mfv:0, vol:0, close:null };
       let curW=null;
-
       const wtd={ hasData:false, mfvWTD:0, volWTD:0, todayClose:null, prevFriClose:null };
 
       const finalizeWeek=()=>{
@@ -419,11 +357,10 @@ async function buildHeatmap(url){
       wkByT[t]=weekMap; wtdByT[t]=wtd;
     }
 
-    // 3) Historical windows (last N completed weeks)
     const allWeeks=Array.from(weeks).sort();
     const wkArr=allWeeks.slice(-Math.max(1,LOOKBACK_N));
 
-    // 4) CMF-only weekly percentiles (v1)
+    // CMF-only weekly percentiles
     const pctV1={};
     for(const w of wkArr){
       const pair=[];
@@ -432,14 +369,13 @@ async function buildHeatmap(url){
       for(let i=0;i<n;i++) (pctV1[pair[i][0]] ||= {})[w]= n>1 ? Math.round(i*100/(n-1)) : 50;
     }
 
-    // 5) Composite (historical)
+    // Composite (historical)
     const compPct = computeCompositePct(wkByT, wkArr, HALF_LIFE);
 
-    // 6) WTD snapshot (current week only)
-    const wtdPct = computeWTDPercentile(wkByT, wtdByT, wkArr, HALF_LIFE, curWeekKey);
+    // WTD snapshot
+    const wtdPct = computeWTDPercentile(wkByT, wtdByT, wkArr, HALF_LIFE, weekKeyNext(new Date()));
 
-    // 7) Cache + render
-    window._heat={ wkArr, pctV1, compPct, wkByT, wtdPct, curWeekKey };
+    window._heat={ wkArr, pctV1, compPct, wkByT, wtdPct };
     render();
     const modeLabel=(mode==='v2'?'Composite (Price+Flow)':'CMF only');
     flash(`Loaded ${Object.keys(wkByT).length} tickers • ${wkArr.length} weeks • Mode: ${modeLabel} • WTD ready`);
@@ -448,23 +384,13 @@ async function buildHeatmap(url){
   }
 }
 
-/* ======================================================================
-   Composite (historical weeks):
-   - Flow: ratio‑of‑EWMAs (bounded) → x‑sec percentile.
-   - Price: EWMA of weekly log‑returns → x‑sec percentile.
-   - **Blend in percentile space** (65/35).
-   - Optional **re‑percentile** the blended scores per week.
-====================================================================== */
-function recomputeComposite(){
-  const H=window._heat; if(!H) return;
-  H.compPct = computeCompositePct(H.wkByT, H.wkArr, HALF_LIFE);
-}
+/* Composite / WTD (unchanged maths) */
+function recomputeComposite(){ const H=window._heat; if(!H) return; H.compPct = computeCompositePct(H.wkByT, H.wkArr, HALF_LIFE); }
 function computeCompositePct(wkByT, wkArr, halfLife){
   const λ = lambdaFromHalfLife(halfLife);
   const isFin=(x)=>Number.isFinite(x);
+  const flowEW={}, priceEW={};
 
-  // ---- Flow: EWMA(MFV)/EWMA(Vol), gently bounded to [-1, +1] ----
-  const flowEW={};
   for(const t in wkByT){
     let sMFV=null, sVOL=null; const series={}; const fallback=[];
     for(const w of wkArr){
@@ -474,24 +400,18 @@ function computeCompositePct(wkByT, wkArr, halfLife){
         sVOL=(sVOL==null)?hit.volW:(λ*sVOL+(1-λ)*hit.volW);
         const ratio=(sVOL && sVOL>0) ? (sMFV/sVOL) : null;
         series[w]=(ratio==null)?null:Math.max(-1,Math.min(1,ratio));
-      }else if(isFin(hit.cmf)){ fallback.push({w,value:hit.cmf}); }
+      } else if(isFin(hit.cmf)){ fallback.push({w,value:hit.cmf}); }
     }
     flowEW[t]=Object.keys(series).length?series:ewma(fallback,λ);
-  }
 
-  // ---- Price: EWMA of weekly log-returns ----
-  const priceEW={};
-  for(const t in wkByT){
     const sR=[];
-    for(const w of wkArr){
-      const hit=wkByT[t][w]; if(!hit) continue;
+    for(const w of wkArr){ const hit=wkByT[t][w]; if(!hit) continue;
       const r=isFin(hit.retLog)?hit.retLog:(isFin(hit.ret)?Math.log(1+hit.ret):null);
       if(r!=null) sR.push({w,value:r});
     }
     priceEW[t]=ewma(sR,λ);
   }
 
-  // ---- Cross-sectional percentiles for each leg (per week) ----
   function xsec(map){
     const out={};
     for(const w of wkArr){
@@ -501,10 +421,8 @@ function computeCompositePct(wkByT, wkArr, halfLife){
     }
     return out;
   }
-  const fPct=xsec(flowEW);
-  const pPct=xsec(priceEW);
+  const fPct=xsec(flowEW), pPct=xsec(priceEW);
 
-  // ---- Blend IN PERCENTILE SPACE ----
   const blendedPct={};
   for(const t in wkByT){
     for(const w of wkArr){
@@ -514,13 +432,10 @@ function computeCompositePct(wkByT, wkArr, halfLife){
     }
   }
 
-  // ---- Optional: re‑percentile the blended scores per week ----
   if (!RE_PERCENTILE_AFTER_BLEND) {
-    // Round to integers to look like percentiles, but keep raw blended ordering.
     const out={}; for(const t in blendedPct){ out[t]={}; for(const w of wkArr){ const v=blendedPct[t][w]; if(v!=null) out[t][w]=Math.round(v); } }
     return out;
   }
-
   const out={};
   for(const w of wkArr){
     const pair=[]; for(const t in blendedPct){ const v=blendedPct[t][w]; if(v!=null && isFin(v)) pair.push([t,v]); }
@@ -530,27 +445,16 @@ function computeCompositePct(wkByT, wkArr, halfLife){
   return out;
 }
 
-/* ======================================================================
-   WTD (current week) snapshot — same philosophy:
-   - One-step EWMA update with this week's partials,
-   - Convert both legs to cross‑section percentiles,
-   - Blend 65/35 in percentile space,
-   - Re‑percentile the blend for a clear WTD ranking.
-====================================================================== */
-function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife, curWeekKey){
-  const λ = lambdaFromHalfLife(halfLife);
-  const isFin=(x)=>Number.isFinite(x);
-
+function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
+  const λ = lambdaFromHalfLife(halfLife), isFin=(x)=>Number.isFinite(x);
   const flowNow={}, priceNow={};
+
   for(const t in wkByT){
-    // roll EWMA states to last completed week
     let sMFV=null, sVOL=null, lastFriClose=null;
     for(const w of wkArr){
       const h=wkByT[t][w]; if(!h) continue;
-      if(isFin(h.mfvW)&&isFin(h.volW)){
-        sMFV=(sMFV==null)?h.mfvW:(λ*sMFV+(1-λ)*h.mfvW);
-        sVOL=(sVOL==null)?h.volW:(λ*sVOL+(1-λ)*h.volW);
-      }
+      if(isFin(h.mfvW)&&isFin(h.volW)){ sMFV=(sMFV==null)?h.mfvW:(λ*sMFV+(1-λ)*h.mfvW);
+        sVOL=(sVOL==null)?h.volW:(λ*sVOL+(1-λ)*h.volW); }
       lastFriClose=h.close ?? lastFriClose;
     }
     const wtd=wtdByT[t]||{};
@@ -559,41 +463,29 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife, curWeekKey){
       const sVOL2=(sVOL==null)?wtd.volWTD:(λ*sVOL+(1-λ)*wtd.volWTD);
       const ratio=(sVOL2 && sVOL2>0) ? (sMFV2/sVOL2) : null;
       flowNow[t]=(ratio==null)?null:Math.max(-1,Math.min(1,ratio));
-
       if (isFin(wtd.todayClose) && isFin(wtd.prevFriClose) && wtd.prevFriClose>0){
         priceNow[t]=Math.log(wtd.todayClose / wtd.prevFriClose);
       } else priceNow[t]=null;
     } else { flowNow[t]=null; priceNow[t]=null; }
   }
 
-  // percentile each leg for WTD
   function xsecOne(map){
     const pair=[]; for(const t in map){ const v=map[t]; if(v!=null && Number.isFinite(v)) pair.push([t,v]); }
     pair.sort((a,b)=>a[1]-b[1]); const n=pair.length; const out={};
     for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? Math.round(i*100/(n-1)) : 50;
     return out;
   }
-  const fPct = xsecOne(flowNow);
-  const pPct = xsecOne(priceNow);
+  const fPct = xsecOne(flowNow), pPct = xsecOne(priceNow);
 
-  // blend in percentile space
-  const blended={};
-  for(const t in wkByT){
-    const f=fPct[t], p=pPct[t];
-    if (f==null || p==null) continue;
-    blended[t] = BLEND_FLOW*f + BLEND_PRICE*p;
-  }
-
-  // re‑percentile blended WTD
+  const blended={}; for(const t in wkByT){ const f=fPct[t], p=pPct[t]; if (f==null || p==null) continue; blended[t] = BLEND_FLOW*f + BLEND_PRICE*p; }
   const pair=[]; for(const t in blended){ const v=blended[t]; if(v!=null && Number.isFinite(v)) pair.push([t,v]); }
   pair.sort((a,b)=>a[1]-b[1]); const n=pair.length; const out={};
   for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? Math.round(i*100/(n-1)) : 50;
-
-  return { week: curWeekKey, map: out };
+  return { map: out };
 }
 
 /* ======================================================================
-   Rendering
+   Rendering (+ sparklines)
 ====================================================================== */
 function getVal(t,w){
   const H=window._heat; if(!H) return null;
@@ -601,11 +493,34 @@ function getVal(t,w){
 }
 function avg(arr){ const f=arr.filter(v=>v!=null); return f.length?Math.round(f.reduce((a,b)=>a+b,0)/f.length):null; }
 
+/* sparkline mini SVG: last ~4 months of weekly closes */
+function sparklineSVG(values, w=72, h=18){
+  const xs = values.filter(v => Number.isFinite(v));
+  if (xs.length < 2) return '';
+  const min = Math.min(...xs), max = Math.max(...xs);
+  const range = (max-min)||1, n = values.length;
+  const sx = i => (i/(n-1))*w;
+  const sy = v => h - ((v-min)/range)*h;
+  let d = '';
+  for (let i=0;i<n;i++){
+    const v = values[i]; if (!Number.isFinite(v)) continue;
+    const x=sx(i), y=sy(v);
+    d += (d? ' L ':'M ') + x.toFixed(1) + ' ' + y.toFixed(1);
+  }
+  const lastIdx = values.map((v,i)=>[v,i]).filter(([v])=>Number.isFinite(v)).pop()[1];
+  const lastX = sx(lastIdx), lastY = sy(values[lastIdx]);
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+            <path class="line" d="${d}"></path>
+            <circle class="dot" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}"></circle>
+          </svg>`;
+}
+
 function render(){
   const H=window._heat; if(!H) return;
   const { wkArr, wkByT, wtdPct } = H;
   const names=Object.keys(wkByT);
   const latest=wkArr[wkArr.length-1];
+  const SPARK_WEEKS = Math.min(17, wkArr.length); // ~4 months
   const sortBy=(sortSel?.value)||'ticker';
 
   const rows = names.map(t=>{
@@ -617,7 +532,14 @@ function render(){
       const a=getVal(t,wkArr[i]), b=(wkArr.length>4)?getVal(t,wkArr[j]):null;
       return (a!=null&&b!=null)?(a-b):null; })();
     const wtdVal = (wtdPct?.map||{})[t];
-    return { t,label,latestVal,avgN,mom4,wtdVal };
+
+    // sparkline values = weekly CLOSE over last ~4 months
+    const sparkVals = wkArr.slice(-SPARK_WEEKS).map(w=>{
+      const hit=(wkByT[t]||{})[w];
+      return (hit && Number.isFinite(hit.close)) ? hit.close : NaN;
+    });
+
+    return { t,label,latestVal,avgN,mom4,wtdVal,sparkVals };
   });
 
   rows.sort((A,B)=>{
@@ -630,23 +552,25 @@ function render(){
     }
   });
 
-  const th=['<th>Group</th>','<th>Ticker</th>']
+  const th=['<th>Group</th>','<th class="spark"></th>','<th>Ticker</th>']
     .concat(wkArr.map(w=>`<th class="cell">${w.slice(5)}</th>`))
     .concat([`<th class="cell wtdCol">WTD</th>`]).join('');
+
   let html = `<table><thead><tr>${th}</tr></thead><tbody>`;
 
   for(const R of rows){
-    html += `<tr><td class="label">${R.label}</td><td>${R.t}</td>`;
+    html += `<tr>
+      <td class="label">${R.label}</td>
+      <td class="spark">${sparklineSVG(R.sparkVals)}</td>
+      <td>${R.t}</td>`;
     for(const w of wkArr){
       const val=getVal(R.t,w);
       const cls = val==null? '' : (val>=80?'g' : val>=60?'y' : 'r');
       html += `<td class="cell ${cls}">${val??''}</td>`;
     }
-    const wv=R.wtdVal; let wcls='';
-    if (wv==null) wcls='';
-    else wcls=(wv>=80?'gW':wv>=60?'yW':'rW');
-    html += `<td class="cell wtdCol ${wcls}">${wv==null?'–':wv}</td>`;
-    html += `</tr>`;
+    const wv=R.wtdVal;
+    const wcls = (wv==null)?'' : (wv>=80?'gW':wv>=60?'yW':'rW');
+    html += `<td class="cell wtdCol ${wcls}">${wv==null?'–':wv}</td></tr>`;
   }
 
   html += `</tbody></table>`;
