@@ -306,43 +306,35 @@ async function buildHeatmap(url){
     const res = await fetch(proxied);
     if (!res.ok) throw new Error('Fetch failed: ' + res.status);
 
-    // --- parse CSV safely ---
+    // --- parse CSV safely (keep your existing code above) ---
     const text = (await res.text()).replace(/^\uFEFF/, '').trim();
-
-    // Split into rows, clean EACH cell
     let rows = text.split(/\r?\n/).map(r =>
       r.split(',').map(c =>
-        c.replace(/\uFEFF/g, '')   // kill any stray BOMs
-         .replace(/^"|"$/g, '')    // strip surrounding quotes
-         .trim()
+        c.replace(/\uFEFF/g,'').replace(/^"|"$/g,'').trim()
       )
     );
-
-    // Header: lowercase, drop empty trailing column
+    
+    // Header
     let header = rows.shift().map(h => h.toLowerCase()).filter(Boolean);
-
-    // Trim rows if they have more cells than header
+    
+    // (optional) shape rows to header length
     rows = rows.map(r => (r.length > header.length ? r.slice(0, header.length) : r));
-
+    
     // DEBUG
     console.log('[heatmap] url:', url);
     console.log('[heatmap] header row:', header);
     console.log('[heatmap] first data row:', rows[0]);
-
-    // Use existing need declaration only ONCE
+    
+    // Declare `need` ONCE and validate
     const need = ['date','ticker','open','high','low','close','volume'];
     for (const k of need) {
       if (!header.includes(k)) throw new Error('Missing header: ' + k);
     }
+    
+    const idx = Object.fromEntries(header.map((h,i)=>[h,i]));
+    // …rest of your function…
 
-    const idx = Object.fromEntries(header.map((h,i) => [h,i]));
 
-    // …rest of your function continues unchanged…
-
-
-    const need=['date','ticker','open','high','low','close','volume'];
-    for(const k of need){ if(!header.includes(k)) throw new Error('Missing header: '+k); }
-    const idx=Object.fromEntries(header.map((h,i)=>[h,i]));
 
     // daily → per-ticker arrays
     const byT={};
