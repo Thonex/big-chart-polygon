@@ -301,24 +301,39 @@ function ewma(arr,lambda){ let s=null; const out={}; for(const {w,value} of arr)
 ====================================================================== */
 async function buildHeatmap(url){
   try{
-    const needsProxy=location.protocol==='file:';
-    const proxied=needsProxy?('https://cors.isomorphic-git.org/'+url):url;
-    const res=await fetch(proxied);
-    if(!res.ok) throw new Error('Fetch failed: '+res.status);
+    const needsProxy = location.protocol === 'file:';
+    const proxied    = needsProxy ? ('https://cors.isomorphic-git.org/' + url) : url;
+    const res = await fetch(proxied);
+    if (!res.ok) throw new Error('Fetch failed: ' + res.status);
 
-    const text=(await res.text()).replace(/^\uFEFF/,'').trim();
-    const rows=text.split(/\r?\n/).map(r=>r.split(','));
-    const header = rows.shift().map(h =>
-    h.replace(/\uFEFF/g,'')      // remove BOM
-     .replace(/^"|"$/g,'')       // strip surrounding quotes
-     .trim()
-     .toLowerCase()
-    ).filter(h => h);              // drop any empty columns
+    // --- parse CSV safely ---
+    const text = (await res.text()).replace(/^\uFEFF/, '').trim();
 
-    // DEBUG — add these 3 lines
+    // Split into rows, then clean EACH cell: remove BOMs, surrounding quotes, trim
+    let rows = text.split(/\r?\n/).map(r =>
+      r.split(',').map(c =>
+        c.replace(/\uFEFF/g, '')   // kill any stray BOMs
+         .replace(/^"|"$/g, '')    // strip surrounding double quotes
+         .trim()
+      )
+    );
+
+    // Header: lowercase and drop any empty trailing column
+    let header = rows.shift().map(h => h.toLowerCase()).filter(Boolean);
+
+    // If any data row has more cells than header (e.g., trailing empty ""), trim it
+    rows = rows.map(r => (r.length > header.length ? r.slice(0, header.length) : r));
+
+    // DEBUG
     console.log('[heatmap] url:', url);
     console.log('[heatmap] header row:', header);
     console.log('[heatmap] first data row:', rows[0]);
+
+    // Validate required columns and build index map
+    const need = ['date','ticker','open','high','low','close','volume'];
+    for (const k of need) { if (!header.includes(k)) throw new Error('Missing header: ' + k); }
+    const idx = Object.fromEntries(header.map((h,i) => [h,i]));
+
 
 
     const need=['date','ticker','open','high','low','close','volume'];
