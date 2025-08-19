@@ -321,9 +321,9 @@ async function buildHeatmap(url){
     rows = rows.map(r => (r.length > header.length ? r.slice(0, header.length) : r));
     
     // DEBUG
-    console.log('[heatmap] url:', url);
-    console.log('[heatmap] header row:', header);
-    console.log('[heatmap] first data row:', rows[0]);
+    //console.log('[heatmap] url:', url);
+    //console.log('[heatmap] header row:', header);
+    //console.log('[heatmap] first data row:', rows[0]);
     
     // Declare `need` ONCE and validate
     const need = ['date','ticker','open','high','low','close','volume'];
