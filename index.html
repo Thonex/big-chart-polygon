@@ -308,7 +308,12 @@ async function buildHeatmap(url){
 
     const text=(await res.text()).replace(/^\uFEFF/,'').trim();
     const rows=text.split(/\r?\n/).map(r=>r.split(','));
-    const header=rows.shift().map(h=>h.replace(/\uFEFF/g,'').trim().toLowerCase());
+    const header = rows.shift().map(h =>
+    h.replace(/\uFEFF/g,'')      // remove BOM
+     .replace(/^"|"$/g,'')       // strip surrounding quotes
+     .trim()
+     .toLowerCase()
+    ).filter(h => h);              // drop any empty columns
 
     // DEBUG — add these 3 lines
     console.log('[heatmap] url:', url);
