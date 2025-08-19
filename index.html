@@ -309,6 +309,13 @@ async function buildHeatmap(url){
     const text=(await res.text()).replace(/^\uFEFF/,'').trim();
     const rows=text.split(/\r?\n/).map(r=>r.split(','));
     const header=rows.shift().map(h=>h.replace(/\uFEFF/g,'').trim().toLowerCase());
+
+    // DEBUG — add these 3 lines
+    console.log('[heatmap] url:', url);
+    console.log('[heatmap] header row:', header);
+    console.log('[heatmap] first data row:', rows[0]);
+
+
     const need=['date','ticker','open','high','low','close','volume'];
     for(const k of need){ if(!header.includes(k)) throw new Error('Missing header: '+k); }
     const idx=Object.fromEntries(header.map((h,i)=>[h,i]));
