@@ -337,7 +337,7 @@ function getFinanceLink(ticker){
     ITB:  'ITB:BATS',
     REM:  'REM:BATS',
 
-    // Sector ETFs (still stable)
+    // Sector ETFs
     XLB:'XLB:NYSEARCA', XLE:'XLE:NYSEARCA', XLF:'XLF:NYSEARCA', XLI:'XLI:NYSEARCA',
     XLK:'XLK:NYSEARCA', XLP:'XLP:NYSEARCA', XLU:'XLU:NYSEARCA', XLV:'XLV:NYSEARCA',
     XLY:'XLY:NYSEARCA', XLRE:'XLRE:NYSEARCA', XLC:'XLC:NYSEARCA',
@@ -346,7 +346,7 @@ function getFinanceLink(ticker){
     XOP:'XOP:NYSEARCA', OIH:'OIH:NYSEARCA', FCG:'FCG:NYSEARCA', TAN:'TAN:NYSEARCA',
     XME:'XME:NYSEARCA', GDX:'GDX:NYSEARCA', SLX:'SLX:NYSEARCA',
     JETS:'JETS:NYSEARCA', SEA:'SEA:NYSEARCA', VIS:'VIS:NYSEARCA',
-    XRT:'XRT:NYSEARCA', XHB:'XHB:NYSEARCA', BJK:'BJKAS:IST',
+    XRT:'XRT:NYSEARCA', XHB:'XHB:NYSEARCA',  // ✅ BJK REMOVED HERE
     VDC:'VDC:NYSEARCA',
     IBB:'IBB:NASDAQ', IHI:'IHI:NYSEARCA', IHE:'IHE:NYSEARCA', IHF:'IHF:NYSEARCA',
     KBE:'KBE:NYSEARCA', KRE:'KRE:NYSEARCA', KIE:'KIE:NYSEARCA', IAI:'IAI:NYSEARCA',
@@ -356,14 +356,12 @@ function getFinanceLink(ticker){
     FUTY:'FUTY:NYSEARCA'
   };
 
-  // fallback (in case something new appears)
   const DEFAULT_EXCHANGE = 'NASDAQ';
-
   const symbol = FULL_MAP[ticker] || `${ticker}:${DEFAULT_EXCHANGE}`;
 
   return `https://www.google.com/finance/beta/quote/${symbol}?window=1Y&indicator=SMA%3A25%3Aprice%2CMACD%3A5%3A10%3A9%3Aclose`;
 }
-
+  
 function fmt(val){
   if (val == null) return '';
   return DISPLAY_DECIMALS === 0
