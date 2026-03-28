@@ -364,10 +364,6 @@ function getFinanceLink(ticker){
   return `https://www.google.com/finance/beta/quote/${symbol}?window=1Y&indicator=SMA%3A25%3Aprice%2CMACD%3A5%3A10%3A9%3Aclose`;
 }
 
-  const exchange = EXCHANGE_MAP[ticker] || 'NASDAQ';
-
-  return `https://www.google.com/finance/beta/quote/${ticker}:${exchange}?window=1Y&indicator=SMA%3A25%3Aprice%2CMACD%3A5%3A10%3A9%3Aclose`;
-}
 function fmt(val){
   if (val == null) return '';
   return DISPLAY_DECIMALS === 0
