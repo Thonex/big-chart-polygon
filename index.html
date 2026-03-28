@@ -86,7 +86,10 @@
         <span class="box g"></span> 80–99
         <span class="box y"></span> 60–79
         <span class="box r"></span> 0–59
-        <span class="wtdNote">WTD uses darker shades.</span>
+        <span class="wtdNote">
+        <input id="decimalsInput" type="number" min="0" max="2" step="1" value="0" style="width:36px; text-align:center; margin-right:6px;">
+        Decimals (0–2)
+        </span>
       </div>
     </div>
 
@@ -120,7 +123,7 @@
 
 /* ---------------- Config toggles ---------------- */
 
-const DISPLAY_DECIMALS = 0; // 0 = integers, 1 = one decimal, 2 = two decimals, etc.
+let DISPLAY_DECIMALS = 0; // 0 = integers, 1 = one decimal, 2 = two decimals, etc.
 
 const BLEND_FLOW = 0.65;
 const BLEND_PRICE = 0.35;
@@ -238,6 +241,22 @@ const halfSel=document.getElementById('halfLife');
 
 if (lookSel) lookSel.value=String(LOOKBACK_N);
 if (halfSel) halfSel.value=String(HALF_LIFE);
+
+const decimalsInput = document.getElementById('decimalsInput');
+
+if (decimalsInput){
+  decimalsInput.value = DISPLAY_DECIMALS;
+
+  decimalsInput.addEventListener('change', () => {
+    let v = parseInt(decimalsInput.value, 10);
+    if (isNaN(v)) v = 0;
+    v = Math.max(0, Math.min(2, v));
+    DISPLAY_DECIMALS = v;
+    decimalsInput.value = v;
+    render();
+  });
+}
+
 updateAvgOptionLabel();
 reflectMode();
 
