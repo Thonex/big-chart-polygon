@@ -311,9 +311,32 @@ pctToggle.onclick = () => {
 document.querySelector('header .row:last-child').appendChild(pctToggle);
 
 function getFinanceLink(ticker){
-  return `https://www.google.com/finance/beta/quote/${ticker}:NASDAQ?window=1Y&indicator=SMA%3A25%3Aprice%2CMACD%3A5%3A10%3A9%3Aclose`;
-}
 
+  const EXCHANGE_MAP = {
+    // Sector ETFs
+    XLB:'NYSEARCA', XLE:'NYSEARCA', XLF:'NYSEARCA', XLI:'NYSEARCA',
+    XLK:'NYSEARCA', XLP:'NYSEARCA', XLU:'NYSEARCA', XLV:'NYSEARCA',
+    XLY:'NYSEARCA', XLRE:'NYSEARCA', XLC:'NYSEARCA',
+
+    // Industry ETFs
+    XOP:'NYSEARCA', OIH:'NYSEARCA', FCG:'NYSEARCA', TAN:'NYSEARCA',
+    XME:'NYSEARCA', GDX:'NYSEARCA', SLX:'NYSEARCA', PICK:'NYSEARCA',
+    ITA:'NYSEARCA', IYT:'NYSEARCA', PAVE:'NYSEARCA', JETS:'NYSEARCA',
+    SEA:'NYSEARCA', VIS:'NYSEARCA',
+    ITB:'NYSEARCA', XRT:'NYSEARCA', XHB:'NYSEARCA', BJK:'NYSEARCA',
+    VDC:'NYSEARCA',
+    IBB:'NASDAQ', IHI:'NYSEARCA', PPH:'NYSEARCA', IHE:'NYSEARCA', IHF:'NYSEARCA',
+    KBE:'NYSEARCA', KRE:'NYSEARCA', KIE:'NYSEARCA', IAI:'NYSEARCA', REM:'NYSEARCA',
+    VNQ:'NYSEARCA', IYR:'NYSEARCA',
+    SOXX:'NASDAQ', IGV:'NYSEARCA', FDN:'NYSEARCA', CIBR:'NASDAQ',
+    VOX:'NYSEARCA',
+    FUTY:'NYSEARCA', PHO:'NYSEARCA'
+  };
+
+  const exchange = EXCHANGE_MAP[ticker] || 'NASDAQ';
+
+  return `https://www.google.com/finance/beta/quote/${ticker}:${exchange}?window=1Y&indicator=SMA%3A25%3Aprice%2CMACD%3A5%3A10%3A9%3Aclose`;
+}
 function fmt(val){
   if (val == null) return '';
   return DISPLAY_DECIMALS === 0
