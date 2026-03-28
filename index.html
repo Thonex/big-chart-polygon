@@ -111,13 +111,13 @@
       <label class="muted small">Lookback</label>
       <select id="lookbackN">
         <option>2</option><option>4</option><option>8</option>
-        <option selected>12</option><option>16</option><option>17</option>
+        <option>12</option><option selected>16</option><option>17</option>
       </select>
 
       <label class="muted small">Half‑life</label>
       <select id="halfLife">
-        <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
-        <option selected>7</option><option>10</option><option>12</option><option>16</option>
+        <option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option>
+        <option>7</option><option>10</option><option>12</option><option>16</option>
       </select>
 
       <button id="btnRefresh">Refresh</button>
@@ -239,8 +239,8 @@ const LABELS = {
 /* ---------------- State & DOM ---------------- */
 let active = localStorage.getItem('heatmap_active') || 'industries';
 let mode   = localStorage.getItem(MODE_KEY) || 'v2';
-let LOOKBACK_N = +(localStorage.getItem(N_KEY) || 12);
-let HALF_LIFE  = +(localStorage.getItem(H_KEY) || 7);
+let LOOKBACK_N = +(localStorage.getItem(N_KEY) || 16);
+let HALF_LIFE  = +(localStorage.getItem(H_KEY) || 5);
 
 const pillS=document.getElementById('pillSectors');
 const pillI=document.getElementById('pillIndustries');
