@@ -32,7 +32,7 @@
     .box.g{background:#0f3}.box.y{background:#ffea5a}.box.r{background:#b22}
     .box.gW{background:#086e08}.box.yW{background:#9a8c24}.box.rW{background:#541212}
     .small{font-size:12px}
-    td[onclick] {
+    td[data-ticker] {
       cursor: pointer;
     }
     td.label{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;min-width:180px}
@@ -55,7 +55,18 @@
     width: 100%;
     }
 
+    td[data-ticker] {
+      color: #8ab4ff;           /* subtle blue */
+      font-weight: 600;
+    }
+    tbody tr:hover {
+      background: rgba(255,255,255,0.03);
+    }
 
+    td[data-ticker]:hover {
+      text-decoration: underline;
+      color: #a8c7ff;           /* lighter on hover */
+    }
 
     /* Hide the Refresh button — pills do the loading now */
     #btnRefresh{ display:none !important; }
