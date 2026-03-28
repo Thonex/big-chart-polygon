@@ -526,7 +526,10 @@ function getVal(t,w){
   const H=window._heat; if(!H) return null;
   return mode==='v2' ? (H.compPct[t]||{})[w] : (H.pctV1[t]||{})[w];
 }
-function avg(arr){ const f=arr.filter(v=>v!=null); return f.length?Math.round(f.reduce((a,b)=>a+b,0)/f.length):null; }
+function avg(arr){
+  const f = arr.filter(v => v != null);
+  return f.length > 0 ? (f.reduce((a,b)=>a+b,0) / f.length) : null;
+}
 
 /* sparkline mini SVG: last ~4 months of weekly closes */
 function sparklineSVG(values, w=72, h=18){
