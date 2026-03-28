@@ -401,7 +401,7 @@ async function buildHeatmap(url){
       const pair=[];
       for(const t in wkByT){ const hit=wkByT[t][w]; if(hit && Number.isFinite(hit.cmf)) pair.push([t,hit.cmf]); }
       pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
-      for(let i=0;i<n;i++) (pctV1[pair[i][0]] ||= {})[w]= n>1 ? Math.round(i*100/(n-1)) : 50;
+      for(let i=0;i<n;i++) (pctV1[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
     }
 
     // Composite (historical)
@@ -452,7 +452,7 @@ function computeCompositePct(wkByT, wkArr, halfLife){
     for(const w of wkArr){
       const pair=[]; for(const t in map){ const v=map[t][w]; if(v!=null && isFin(v)) pair.push([t,v]); }
       pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
-      for(let i=0;i<n;i++) (out[pair[i][0]] ||= {})[w]= n>1 ? Math.round(i*100/(n-1)) : 50;
+      for(let i=0;i<n;i++) (out[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
     }
     return out;
   }
@@ -468,14 +468,14 @@ function computeCompositePct(wkByT, wkArr, halfLife){
   }
 
   if (!RE_PERCENTILE_AFTER_BLEND) {
-    const out={}; for(const t in blendedPct){ out[t]={}; for(const w of wkArr){ const v=blendedPct[t][w]; if(v!=null) out[t][w]=Math.round(v); } }
+    const out={}; for(const t in blendedPct){ out[t]={}; for(const w of wkArr){ const v=blendedPct[t][w]; if(v!=null) out[t][w]=v; } }
     return out;
   }
   const out={};
   for(const w of wkArr){
     const pair=[]; for(const t in blendedPct){ const v=blendedPct[t][w]; if(v!=null && isFin(v)) pair.push([t,v]); }
     pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
-    for(let i=0;i<n;i++) (out[pair[i][0]] ||= {})[w]= n>1 ? Math.round(i*100/(n-1)) : 50;
+    for(let i=0;i<n;i++) (out[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
   }
   return out;
 }
@@ -507,7 +507,7 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
   function xsecOne(map){
     const pair=[]; for(const t in map){ const v=map[t]; if(v!=null && Number.isFinite(v)) pair.push([t,v]); }
     pair.sort((a,b)=>a[1]-b[1]); const n=pair.length; const out={};
-    for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? Math.round(i*100/(n-1)) : 50;
+    for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
     return out;
   }
   const fPct = xsecOne(flowNow), pPct = xsecOne(priceNow);
@@ -515,7 +515,7 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
   const blended={}; for(const t in wkByT){ const f=fPct[t], p=pPct[t]; if (f==null || p==null) continue; blended[t] = BLEND_FLOW*f + BLEND_PRICE*p; }
   const pair=[]; for(const t in blended){ const v=blended[t]; if(v!=null && Number.isFinite(v)) pair.push([t,v]); }
   pair.sort((a,b)=>a[1]-b[1]); const n=pair.length; const out={};
-  for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? Math.round(i*100/(n-1)) : 50;
+  for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
   return { map: out };
 }
 
@@ -605,11 +605,11 @@ function render(){
     for(const w of wkArr){
       const val=getVal(R.t,w);
       const cls = val==null? '' : (val>=80?'g' : val>=60?'y' : 'r');
-      html += `<td class="cell ${cls}">${val??''}</td>`;
+      html += `<td class="cell ${cls}">${val != null ? val.toFixed(1) : ''}</td>`;
     }
     const wv=R.wtdVal;
     const wcls = (wv==null)?'' : (wv>=80?'gW':wv>=60?'yW':'rW');
-    html += `<td class="cell wtdCol ${wcls}">${wv==null?'–':wv}</td></tr>`;
+    html += `<td class="cell wtdCol ${wcls}">${wv == null ? '–' : wv.toFixed(1)}</td></tr>`;
   }
 
   html += `</tbody></table>`;
@@ -619,13 +619,14 @@ function render(){
 /* ---------------- Boot ---------------- */
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    pillS.classList.toggle('active',active==='sectors');
-    pillI.classList.toggle('active',active==='industries');
+    pillS.classList.toggle('active', active === 'sectors');
+    pillI.classList.toggle('active', active === 'industries');
     reflectMode();
     loadActive();
-  } catch(e){
+  } catch (e) {
     console.error(e);
-    const s=document.getElementById('status'); if(s) s.textContent='Init error: '+(e.message||e);
+    const s = document.getElementById('status');
+    if (s) s.textContent = 'Init error: ' + (e.message || e);
   }
 });
 </script>
