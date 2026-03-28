@@ -119,6 +119,9 @@
   =======================================================================*/
 
 /* ---------------- Config toggles ---------------- */
+
+const DISPLAY_DECIMALS = 0; // 0 = integers, 1 = one decimal, 2 = two decimals, etc.
+
 const BLEND_FLOW = 0.65;
 const BLEND_PRICE = 0.35;
 let RE_PERCENTILE_AFTER_BLEND = localStorage.getItem('rePctBlend') === 'true';
@@ -284,6 +287,13 @@ pctToggle.onclick = () => {
   recomputeComposite(); render();
 };
 document.querySelector('header .row:last-child').appendChild(pctToggle);
+
+function fmt(val){
+  if (val == null) return '';
+  return DISPLAY_DECIMALS === 0
+    ? Math.round(val)
+    : val.toFixed(DISPLAY_DECIMALS);
+}
 
 function reflectMode(){ modeV1.classList.toggle('active',mode==='v1'); modeV2.classList.toggle('active',mode==='v2'); }
 function updateAvgOptionLabel(){ if (optAvg) optAvg.textContent=`${LOOKBACK_N}\u2011week avg (desc)`; }
@@ -608,11 +618,11 @@ function render(){
     for(const w of wkArr){
       const val=getVal(R.t,w);
       const cls = val==null? '' : (val>=80?'g' : val>=60?'y' : 'r');
-      html += `<td class="cell ${cls}">${val != null ? val.toFixed(1) : ''}</td>`;
+      html += `<td class="cell ${cls}">${fmt(val)}</td>`;
     }
     const wv=R.wtdVal;
     const wcls = (wv==null)?'' : (wv>=80?'gW':wv>=60?'yW':'rW');
-    html += `<td class="cell wtdCol ${wcls}">${wv == null ? '–' : wv.toFixed(1)}</td></tr>`;
+    html += `<td class="cell wtdCol ${wcls}">${wv == null ? '–' : fmt(wv)}</td></tr>`;
   }
 
   html += `</tbody></table>`;
