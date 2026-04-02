@@ -359,7 +359,7 @@ function getFinanceLink(ticker){
   const DEFAULT_EXCHANGE = 'NASDAQ';
   const symbol = FULL_MAP[ticker] || `${ticker}:${DEFAULT_EXCHANGE}`;
 
-  return `https://www.google.com/finance/beta/quote/${symbol}?window=1Y&indicator=SMA%3A25%3Aprice%2CMACD%3A5%3A10%3A9%3Aclose`;
+  return `https://www.google.com/finance/beta/quote/${symbol}?window=1Y&indicator=SMA%3A25%3Aprice%2CMACD%3A5%3A10%3A9%3Aclose&type=candle`;
 }
   
 function fmt(val){
