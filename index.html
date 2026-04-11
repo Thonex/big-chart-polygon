@@ -687,18 +687,33 @@ function renderMeter(data) {
 function sparklineSVG(values, w=72, h=18){
   const xs = values.filter(v => Number.isFinite(v));
   if (xs.length < 2) return '';
+
   const min = Math.min(...xs), max = Math.max(...xs);
   const range = (max-min)||1, n = values.length;
-  const sx = i => (i/(n-1))*w;
+
+  const sx = i => n > 1 ? (i/(n-1))*w : 0;
   const sy = v => h - ((v-min)/range)*h;
+
   let d = '';
   for (let i=0;i<n;i++){
-    const v = values[i]; if (!Number.isFinite(v)) continue;
+    const v = values[i];
+    if (!Number.isFinite(v)) continue;
     const x=sx(i), y=sy(v);
     d += (d? ' L ':'M ') + x.toFixed(1) + ' ' + y.toFixed(1);
   }
-  const lastIdx = values.map((v,i)=>[v,i]).filter(([v])=>Number.isFinite(v)).pop()[1];
-  const lastX = sx(lastIdx), lastY = sy(values[lastIdx]);
+
+  // ✅ SAFE last point logic
+  const valid = values
+    .map((v,i)=>[v,i])
+    .filter(([v]) => Number.isFinite(v));
+
+  if (valid.length === 0) return '';
+
+  const lastIdx = valid[valid.length - 1][1];
+
+  const lastX = sx(lastIdx);
+  const lastY = sy(values[lastIdx]);
+
   return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
             <path class="line" d="${d}"></path>
             <circle class="dot" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}"></circle>
