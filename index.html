@@ -34,6 +34,8 @@
     .small{font-size:12px}
     td[data-ticker] {
       cursor: pointer;
+      color: #8ab4ff;
+      font-weight: 600;
     }
     td.label{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;min-width:180px}
     th:first-child,td:first-child{max-width:220px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -44,21 +46,31 @@
     .wtdCol{ border-left:6px solid #2b3a4c !important; }  /* 2–3× thicker left rule */
     thead th.wtdCol{ border-left-color:#3a4a60 !important; } /* slight contrast in header */
 
-    /* Sparklines */
+     /* Sparklines */
     td.spark{padding:0 6px; min-width:72px}
-    td.spark svg{display:block;width:72px;height:18px}
-    td.spark path.line{fill:none;stroke:#8ab4ff;stroke-width:1.25}
-    td.spark circle.dot{r:1.7;fill:#8ab4ff}
 
     td.spark svg {
-    display: block;
-    width: 100%;
+      display: block;
+      width: 100%;
+      height: 18px;
+      shape-rendering: geometricPrecision;
     }
 
-    td[data-ticker] {
-      color: #8ab4ff;           /* subtle blue */
+    td.spark path.line {
+      fill: none;
+      stroke: #8ab4ff;
+      stroke-width: 1.25;
+    }
+
+    td.spark circle.dot {
+      r: 1.7;
+      fill: #8ab4ff;
+    }
+/*    td[data-ticker] {
+      color: #8ab4ff; 
       font-weight: 600;
     }
+*/
     tbody tr:hover {
       background: rgba(255,255,255,0.03);
     }
@@ -223,7 +235,7 @@ const LABELS = {
     IGV:'Information Tech – Software',
     FDN:'Information Tech – Internet',
     CIBR:'Information Tech – Cybersecurity',
-    XLK:'Information Techn – Broad',
+    XLK:'Information Tech – Broad',
 
     // Communication Services
     XLC:'Communication Services – Broad',
@@ -615,6 +627,62 @@ function avg(arr){
   return f.length > 0 ? (f.reduce((a,b)=>a+b,0) / f.length) : null;
 }
 
+// ===================== MOMENTUM METER =====================
+function ewmaFromArray(arr, halfLife) {
+  const λ = Math.pow(0.5, 1 / halfLife);
+  let s = null;
+  return arr.map(v => {
+    if (v == null) return s;
+    s = (s == null) ? v : (λ * s + (1 - λ) * v);
+    return s;
+  });
+}
+
+function computeMomentumSeries(series) {
+  const fast = ewmaFromArray(series, 3);  // fast (HL=3)
+  const slow = ewmaFromArray(series, 5);  // slow (HL=5)
+
+  const out = [];
+  for (let i = 0; i < series.length; i++) {
+    if (fast[i] == null || slow[i] == null) {
+      out.push({ s: null, m: null });
+    } else {
+      out.push({
+        s: slow[i],              // strength (height)
+        m: fast[i] - slow[i]     // momentum (color)
+      });
+    }
+  }
+  return out;
+}
+
+function renderMeter(data) {
+  if (!data || data.length === 0) return '';
+
+  const maxM = Math.max(...data.map(d => Math.abs(d.m || 0))) || 1;
+
+  return `<div style="display:flex; gap:2px; align-items:flex-end; height:16px;">
+    ${data.map(d => {
+      if (!d || d.s == null) return '<div style="width:6px"></div>';
+
+      const height = Math.max(2, (d.s / 100) * 16);
+      const m = d.m || 0;
+      const intensity = Math.min(1, Math.abs(m) / maxM);
+
+      const color = m >= 0
+        ? \`rgba(0,255,120,\${0.3 + 0.7 * intensity})\`
+        : \`rgba(255,80,80,\${0.3 + 0.7 * intensity})\`;
+
+      return \`<div style="
+        width:6px;
+        height:\${height}px;
+        background:\${color};
+        border-radius:1px;
+      "></div>\`;
+    }).join('')}
+  </div>`;
+}
+
 /* sparkline mini SVG: last ~4 months of weekly closes */
 function sparklineSVG(values, w=72, h=18){
   const xs = values.filter(v => Number.isFinite(v));
@@ -655,13 +723,17 @@ function render(){
       return (a!=null&&b!=null)?(a-b):null; })();
     const wtdVal = (wtdPct?.map||{})[t];
 
+    // === Momentum meter data (CORRECT LOCATION) ===
+    const ms = computeMomentumSeries(series);
+    const last5 = ms.slice(-5);
+    
     // sparkline values = weekly CLOSE over last ~4 months
     const sparkVals = wkArr.slice(-SPARK_WEEKS).map(w=>{
       const hit=(wkByT[t]||{})[w];
       return (hit && Number.isFinite(hit.close)) ? hit.close : NaN;
     });
 
-    return { t,label,latestVal,avgN,mom4,wtdVal,sparkVals };
+    return { t,label,latestVal,avgN,mom4,wtdVal,sparkVals,last5 };
   });
 
   rows.sort((A,B)=>{
@@ -675,10 +747,11 @@ function render(){
   });
 
   const th = [
-    '<th>Group</th>',
-    '<th class="spark">4 mo</th>',
-    '<th>Ticker</th>'
-  ]
+  '<th>Group</th>',
+  '<th class="spark">4 mo</th>',
+  '<th>Flow</th>',   // ✅ NEW COLUMN
+  '<th>Ticker</th>'
+]
     .concat(wkArr.map(w=>`<th class="cell">${w.slice(5)}</th>`))
     .concat([`<th class="cell wtdCol">WTD</th>`]).join('');
 
@@ -688,6 +761,7 @@ function render(){
     html += `<tr>
       <td class="label">${R.label}</td>
       <td class="spark">${sparklineSVG(R.sparkVals)}</td>
+      <td>${renderMeter(R.last5)}</td>
       <td data-ticker="${R.t}" title="Open 1Y chart (SMA 25 + MACD)\nYou must be logged into Google Finance">${R.t}</td>`;
 
     for(const w of wkArr){
@@ -705,13 +779,12 @@ function render(){
   html += `</tbody></table>`;
   document.getElementById('tableWrap').innerHTML = html;
   document.querySelectorAll('td[data-ticker]').forEach(td => {
-  td.addEventListener('click', () => {
-    const t = td.dataset.ticker;
-    window.open(getFinanceLink(t), '_blank', 'noopener,noreferrer');
+    td.addEventListener('click', () => {
+      const t = td.dataset.ticker;
+      window.open(getFinanceLink(t), '_blank', 'noopener,noreferrer');
     });
   });
   }
-
 /* ---------------- Boot ---------------- */
 window.addEventListener('DOMContentLoaded', () => {
   try {
