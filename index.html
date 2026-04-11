@@ -688,7 +688,7 @@ function render(){
     html += `<tr>
       <td class="label">${R.label}</td>
       <td class="spark">${sparklineSVG(R.sparkVals)}</td>
-      <td data-ticker="${R.t}" title="Open 1Y chart (SMA 25 + MACD)">${R.t}</td>`;
+      <td data-ticker="${R.t}" title="Open 1Y chart (SMA 25 + MACD)\nYou must be logged into Google Finance">${R.t}</td>`;
 
     for(const w of wkArr){
       const val=getVal(R.t,w);
