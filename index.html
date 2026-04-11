@@ -670,15 +670,15 @@ function renderMeter(data) {
       const intensity = Math.min(1, Math.abs(m) / maxM);
 
       const color = m >= 0
-        ? \`rgba(0,255,120,\${0.3 + 0.7 * intensity})\`
-        : \`rgba(255,80,80,\${0.3 + 0.7 * intensity})\`;
+        ? 'rgba(0,255,120,' + (0.3 + 0.7 * intensity) + ')'
+        : 'rgba(255,80,80,' + (0.3 + 0.7 * intensity) + ')';
 
-      return \`<div style="
+      return `<div style="
         width:6px;
-        height:\${height}px;
-        background:\${color};
+        height:${height}px;
+        background:${color};
         border-radius:1px;
-      "></div>\`;
+      "></div>`;
     }).join('')}
   </div>`;
 }
