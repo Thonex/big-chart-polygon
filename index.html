@@ -501,11 +501,9 @@ async function buildHeatmap(url){
     }
 
     // Composite (historical) 
-    // Slow baseline (16/5)
-    const compSlow = computeCompositePct(wkByT, wkArr, 5);
-
-    // Fast signal (12/3)
-    const compFast = computeCompositePct(wkByT, wkArr, 3);
+    // Slow & Fast baseline (16/5, 12/3)
+    const compSlow = computeCompositePct(wkByT, wkArr, HALF_LIFE);
+    const compFast = computeCompositePct(wkByT, wkArr, Math.max(1, HALF_LIFE - 2));
 
     // WTD snapshot
     const wtdPct = computeWTDPercentile(wkByT, wtdByT, wkArr, HALF_LIFE, weekKeyNext(new Date()));
@@ -525,8 +523,8 @@ function recomputeComposite(){
   const H = window._heat;
   if (!H) return;
 
-  H.compSlow = computeCompositePct(H.wkByT, H.wkArr, 5);
-  H.compFast = computeCompositePct(H.wkByT, H.wkArr, 3);
+  H.compSlow = computeCompositePct(H.wkByT, H.wkArr, HALF_LIFE);
+  H.compFast = computeCompositePct(H.wkByT, H.wkArr, Math.max(1, HALF_LIFE - 2));
 }
 
 function computeCompositePct(wkByT, wkArr, halfLife){
