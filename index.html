@@ -500,13 +500,17 @@ async function buildHeatmap(url){
       for(let i=0;i<n;i++) (pctV1[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
     }
 
-    // Composite (historical)
-    const compPct = computeCompositePct(wkByT, wkArr, HALF_LIFE);
+    // Composite (historical) 
+    // Slow baseline (16/5)
+    const compSlow = computeCompositePct(wkByT, wkArr, 5);
+
+    // Fast signal (12/3)
+    const compFast = computeCompositePct(wkByT, wkArr, 3);
 
     // WTD snapshot
     const wtdPct = computeWTDPercentile(wkByT, wtdByT, wkArr, HALF_LIFE, weekKeyNext(new Date()));
 
-    window._heat={ wkArr, pctV1, compPct, wkByT, wtdPct };
+    window._heat = {wkArr,pctV1,compSlow,compFast,wkByT,wtdPct};
     render();
     const modeLabel=(mode==='v2'?'Composite (Price+Flow)':'CMF only');
     flash(`Loaded ${Object.keys(wkByT).length} tickers • ${wkArr.length} weeks • Mode: ${modeLabel} • WTD ready`);
@@ -516,7 +520,15 @@ async function buildHeatmap(url){
 }
 
 /* Composite / WTD (unchanged maths) */
-function recomputeComposite(){ const H=window._heat; if(!H) return; H.compPct = computeCompositePct(H.wkByT, H.wkArr, HALF_LIFE); }
+
+function recomputeComposite(){
+  const H = window._heat;
+  if (!H) return;
+
+  H.compSlow = computeCompositePct(H.wkByT, H.wkArr, 5);
+  H.compFast = computeCompositePct(H.wkByT, H.wkArr, 3);
+}
+
 function computeCompositePct(wkByT, wkArr, halfLife){
   const λ = lambdaFromHalfLife(halfLife);
   const isFin=(x)=>Number.isFinite(x);
@@ -619,8 +631,15 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
    Rendering (+ sparklines)
 ====================================================================== */
 function getVal(t,w){
-  const H=window._heat; if(!H) return null;
-  return mode==='v2' ? (H.compPct[t]||{})[w] : (H.pctV1[t]||{})[w];
+  const H = window._heat;
+  if(!H) return null;
+
+  if (mode === 'v2') {
+    // Use SLOW as default table (more stable)
+    return (H.compSlow[t]||{})[w];
+  } else {
+    return (H.pctV1[t]||{})[w];
+  }
 }
 function avg(arr){
   const f = arr.filter(v => v != null);
@@ -638,28 +657,12 @@ function ewmaFromArray(arr, halfLife) {
   });
 }
 
-function computeMomentumSeries(series) {
-  const fast = ewmaFromArray(series, 3);  // fast (HL=3)
-  const slow = ewmaFromArray(series, 5);  // slow (HL=5)
 
-  const out = [];
-  for (let i = 0; i < series.length; i++) {
-    if (fast[i] == null || slow[i] == null) {
-      out.push({ s: null, m: null });
-    } else {
-      out.push({
-        s: slow[i],              // strength (height)
-        m: fast[i] - slow[i]     // momentum (color)
-      });
-    }
-  }
-  return out;
-}
 
 function renderMeter(data) {
   if (!data || data.length === 0) return '';
 
-  const maxM = Math.max(...data.map(d => Math.abs(d.m || 0))) || 1;
+  const maxM = 20; // fixed scale for percentile delta (prevents visual instability)
 
   return `<div style="display:flex; gap:2px; align-items:flex-end; height:16px;">
     ${data.map(d => {
@@ -669,9 +672,11 @@ function renderMeter(data) {
       const m = d.m || 0;
       const intensity = Math.min(1, Math.abs(m) / maxM);
 
-      const color = m >= 0
-        ? 'rgba(0,255,120,' + (0.3 + 0.7 * intensity) + ')'
-        : 'rgba(255,80,80,' + (0.3 + 0.7 * intensity) + ')';
+      const color = m > 2
+        ? 'rgba(0,255,120,' + (0.4 + 0.6 * intensity) + ')'
+        : m < -2
+        ? 'rgba(255,80,80,' + (0.4 + 0.6 * intensity) + ')'
+        : 'rgba(160,160,160,0.3)'; // neutral zone
 
       return `<div style="
         width:6px;
@@ -739,8 +744,19 @@ function render(){
     const wtdVal = (wtdPct?.map||{})[t];
 
     // === Momentum meter data (CORRECT LOCATION) ===
-    const ms = computeMomentumSeries(series);
-    const last5 = ms.slice(-5);
+    const fastSeries = wkArr.map(w => (H.compFast[t]||{})[w]);
+    const slowSeries = wkArr.map(w => (H.compSlow[t]||{})[w]);
+
+    const flowSeries = fastSeries.map((f, i) => {
+      const s = slowSeries[i];
+      if (f == null || s == null) return null;
+      return {
+        s: s,        // strength (baseline)
+        m: f - s     // MACD-style delta
+      };
+    });
+
+    const last5 = flowSeries.slice(-5);
     
     // sparkline values = weekly CLOSE over last ~4 months
     const sparkVals = wkArr.slice(-SPARK_WEEKS).map(w=>{
@@ -764,7 +780,7 @@ function render(){
   const th = [
   '<th>Group</th>',
   '<th class="spark">4 mo</th>',
-  '<th>Flow</th>',   // ✅ NEW COLUMN
+  '<th title="Δ (12/3 − 16/5): acceleration (positive = strengthening, negative = fading)">Δ</th>',
   '<th>Ticker</th>'
 ]
     .concat(wkArr.map(w=>`<th class="cell">${w.slice(5)}</th>`))
