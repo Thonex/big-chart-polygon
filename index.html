@@ -670,9 +670,9 @@ function renderMeter(data) {
       const m = d.m || 0;
       const intensity = Math.min(1, Math.abs(m) / maxM);
 
-      const color = m > 2
+      const color = m > 1.5
         ? 'rgba(0,255,120,' + (0.4 + 0.6 * intensity) + ')'
-        : m < -2
+        : m < -1.5
         ? 'rgba(255,80,80,' + (0.4 + 0.6 * intensity) + ')'
         : 'rgba(160,160,160,0.3)'; // neutral zone
 
