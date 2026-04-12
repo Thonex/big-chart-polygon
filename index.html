@@ -319,7 +319,7 @@ modeV2.onclick=()=>{ mode='v2'; localStorage.setItem(MODE_KEY,mode); reflectMode
 btnRefresh.onclick=()=>loadActive();
 sortSel.onchange=()=>render();
 lookSel.onchange=async()=>{ LOOKBACK_N=+lookSel.value; localStorage.setItem(N_KEY,LOOKBACK_N); updateAvgOptionLabel(); await loadActive(); };
-halfSel.onchange=()=>{ HALF_LIFE=+halfSel.value; localStorage.setItem(H_KEY,HALF_LIFE); recomputeComposite(); render(); };
+halfSel.onchange = async () => (HALF_LIFE = +halfSel.value, localStorage.setItem(H_KEY, HALF_LIFE), await loadActive());
 
 /* Re‑percentile toggle pill */
 const pctToggle = document.createElement('button');
