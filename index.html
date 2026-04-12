@@ -660,30 +660,58 @@ function ewmaFromArray(arr, halfLife) {
 function renderMeter(data) {
   if (!data || data.length === 0) return '';
 
-  const maxM = 20; // fixed scale for percentile delta (prevents visual instability)
+  const maxM = 20;
 
-  return `<div style="display:flex; gap:2px; align-items:flex-end; height:16px;">
-    ${data.map(d => {
-      if (!d || d.s == null) return '<div style="width:6px"></div>';
+  return `
+    <div style="display:flex; gap:2px; align-items:center; height:16px;">
+      ${data.map(d => {
+        if (!d || d.m == null) return '<div style="width:6px"></div>';
 
-      const height = Math.max(2, (d.s / 100) * 16);
-      const m = d.m || 0;
-      const intensity = Math.min(1, Math.abs(m) / maxM);
+        const m = d.m;
+        const intensity = Math.min(1, Math.abs(m) / maxM);
+        const h = Math.max(2, intensity * 8); // half height (since centered)
 
-      const color = m > 1.5
-        ? 'rgba(0,255,120,' + (0.4 + 0.6 * intensity) + ')'
-        : m < -1.5
-        ? 'rgba(255,80,80,' + (0.4 + 0.6 * intensity) + ')'
-        : 'rgba(160,160,160,0.3)'; // neutral zone
+        const color =
+          m > 2
+            ? 'rgba(0,255,120,' + (0.4 + 0.6 * intensity) + ')'
+            : m < -2
+            ? 'rgba(255,80,80,' + (0.4 + 0.6 * intensity) + ')'
+            : 'rgba(160,160,160,0.3)';
 
-      return `<div style="
-        width:6px;
-        height:${height}px;
-        background:${color};
-        border-radius:1px;
-      "></div>`;
-    }).join('')}
-  </div>`;
+        return `
+          <div style="width:6px; height:16px; position:relative;">
+
+            <!-- center line -->
+            <div style="
+              position:absolute;
+              top:50%;
+              left:0;
+              right:0;
+              height:1px;
+              background:rgba(255,255,255,0.2);
+            "></div>
+
+            <!-- bar -->
+            <div style="
+              position:absolute;
+              left:0;
+              right:0;
+              ${m >= 0 ? `
+                bottom:50%;
+                height:${h}px;
+              ` : `
+                top:50%;
+                height:${h}px;
+              `}
+              background:${color};
+              border-radius:1px;
+            "></div>
+
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
 /* sparkline mini SVG: last ~4 months of weekly closes */
