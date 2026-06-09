@@ -58,13 +58,13 @@
 
     td.spark path.line {
       fill: none;
-      stroke: #8ab4ff;
+      stroke: #ffea5a;
       stroke-width: 1.25;
     }
 
     td.spark circle.dot {
       r: 1.7;
-      fill: #8ab4ff;
+      fill: #ffea5a;
     }
 /*    td[data-ticker] {
       color: #8ab4ff; 
@@ -715,7 +715,7 @@ function renderMeter(data) {
 }
 
 /* sparkline mini SVG: last ~4 months of weekly closes */
-function sparklineSVG(values, w=72, h=18){
+function sparklineSVG(values, compareValues, w=72, h=18){
   const xs = values.filter(v => Number.isFinite(v));
   if (xs.length < 2) return '';
 
@@ -754,7 +754,7 @@ function sparklineSVG(values, w=72, h=18){
 function render(){
   const H=window._heat; if(!H) return;
   const { wkArr, wkByT, wtdPct } = H;
-  const names=Object.keys(wkByT);
+  const names = Object.keys(wkByT).filter(t => active !== 'sectors' || t !== 'SPY');
   const latest=wkArr[wkArr.length-1];
   const SPARK_WEEKS = Math.min(17, wkArr.length); // ~4 months
   const sortBy=(sortSel?.value)||'ticker';
@@ -790,7 +790,12 @@ function render(){
       return (hit && Number.isFinite(hit.close)) ? hit.close : NaN;
     });
 
-    return { t,label,latestVal,avgN,mom4,wtdVal,sparkVals,last5 };
+    const spyVals = wkArr.slice(-SPARK_WEEKS).map(w=>{
+      const hit=(wkByT['SPY']||{})[w];
+      return (hit && Number.isFinite(hit.close)) ? hit.close : NaN;
+    });
+
+    return { t,label,latestVal,avgN,mom4,wtdVal,sparkVals,spyVals,last5 };
   });
 
   rows.sort((A,B)=>{
@@ -817,7 +822,7 @@ function render(){
   for(const R of rows){
     html += `<tr>
       <td class="label">${R.label}</td>
-      <td class="spark">${sparklineSVG(R.sparkVals)}</td>
+      <td class="spark">${sparklineSVG(R.sparkVals, R.spyVals)}</td>
       <td>${renderMeter(R.last5)}</td>
       <td data-ticker="${R.t}" title="Open 1Y chart (SMA 25 + MACD)\nYou must be logged into Google Finance">${R.t}</td>`;
 
