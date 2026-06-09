@@ -56,16 +56,19 @@
       shape-rendering: geometricPrecision;
     }
 
-    td.spark path.line {
+    td.spark path.lineMain {
       fill: none;
       stroke: #ffea5a;
       stroke-width: 1.25;
     }
-
-    td.spark circle.dot {
-      r: 1.7;
-      fill: #ffea5a;
+    
+    td.spark path.lineCompare {
+      fill: none;
+      stroke: #8ab4ff;
+      stroke-width: 1.25;
     }
+
+
 /*    td[data-ticker] {
       color: #8ab4ff; 
       font-weight: 600;
@@ -717,21 +720,38 @@ function renderMeter(data) {
 /* sparkline mini SVG: last ~4 months of weekly closes */
 function sparklineSVG(values, compareValues, w=72, h=18){
   const xs = values.filter(v => Number.isFinite(v));
+  const ys = (compareValues||[]).filter(v => Number.isFinite(v));
+  
   if (xs.length < 2) return '';
-
-  const min = Math.min(...xs), max = Math.max(...xs);
-  const range = (max-min)||1, n = values.length;
-
+  
+  const min1 = Math.min(...xs), max1 = Math.max(...xs);
+  const range1 = (max1 - min1) || 1;
+  
+  const min2 = ys.length ? Math.min(...ys) : 0;
+  const max2 = ys.length ? Math.max(...ys) : 1;
+  const range2 = (max2 - min2) || 1;
+  
+  const n = values.length;
+  
   const sx = i => n > 1 ? (i/(n-1))*w : 0;
-  const sy = v => h - ((v-min)/range)*h;
+  const sy1 = v => h - ((v-min1)/range1)*h;
+  const sy2 = v => h - ((v-min2)/range2)*h;
 
-  let d = '';
+  let d1 = '';
   for (let i=0;i<n;i++){
     const v = values[i];
     if (!Number.isFinite(v)) continue;
-    const x=sx(i), y=sy(v);
-    d += (d? ' L ':'M ') + x.toFixed(1) + ' ' + y.toFixed(1);
+    const x=sx(i), y=sy1(v);
+    d1 += (d1 ? ' L ' : 'M ') + x.toFixed(1) + ' ' + y.toFixed(1);
   }
+
+let d2 = '';
+for (let i=0;i<n;i++){
+  const v = compareValues?.[i];
+  if (!Number.isFinite(v)) continue;
+  const x=sx(i), y=sy2(v);
+  d2 += (d2 ? ' L ' : 'M ') + x.toFixed(1) + ' ' + y.toFixed(1);
+}
 
   // ✅ SAFE last point logic
   const valid = values
@@ -746,9 +766,10 @@ function sparklineSVG(values, compareValues, w=72, h=18){
   const lastY = sy(values[lastIdx]);
 
   return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-          <path class="line" d="${d}"></path>
-        </svg>`;
-}
+            <path class="lineCompare" d="${d2}"></path>
+            <path class="lineMain" d="${d1}"></path>
+          </svg>`;
+  }
 
 function render(){
   const H=window._heat; if(!H) return;
