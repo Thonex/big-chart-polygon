@@ -863,7 +863,7 @@ function render(){
 
   const th = [
   '<th>Group</th>',
-  '<th class="spark">4 mo</th>',
+  `<th class="spark">${active === 'sectors' ? '4 mo v SPY' : '4 mo v Sector'}</th>`,
   '<th title="Δ C/D: fast composite minus slow composite (current half-life). Positive = strengthening; negative = fading.">Δ C/D</th>',
   '<th>Ticker</th>'
 ]
