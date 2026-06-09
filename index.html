@@ -775,6 +775,30 @@ for (let i=0;i<n;i++){
           </svg>`;
   }
 
+const INDUSTRY_BENCHMARK = {
+  XOP:'XLE', OIH:'XLE', FCG:'XLE', TAN:'XLE',
+
+  XME:'XLB', GDX:'XLB', SLX:'XLB', PICK:'XLB',
+
+  ITA:'XLI', IYT:'XLI', PAVE:'XLI', JETS:'XLI', SEA:'XLI', VIS:'XLI',
+
+  ITB:'XLY', AUTO:'XLY', XRT:'XLY', XHB:'XLY', ESPO:'XLY',
+
+  VDC:'XLP',
+
+  IBB:'XLV', IHI:'XLV', PPH:'XLV', IHE:'XLV', IHF:'XLV',
+
+  KBE:'XLF', KRE:'XLF', KIE:'XLF', IAI:'XLF',
+
+  VNQ:'XLRE', IYR:'XLRE', REM:'XLRE',
+
+  SOXX:'XLK', IGV:'XLK', FDN:'XLK', CIBR:'XLK',
+
+  VOX:'XLC',
+
+  FUTY:'XLU', PHO:'XLU'
+};  
+
 function render(){
   const H=window._heat; if(!H) return;
   const { wkArr, wkByT, wtdPct } = H;
@@ -814,8 +838,13 @@ function render(){
       return (hit && Number.isFinite(hit.close)) ? hit.close : NaN;
     });
 
+    const benchmarkTicker =
+      active === 'sectors'
+        ? 'SPY'
+        : (INDUSTRY_BENCHMARK[t] || 'SPY');
+    
     const spyVals = wkArr.slice(-SPARK_WEEKS).map(w=>{
-      const hit=(wkByT['SPY']||{})[w];
+      const hit=(wkByT[benchmarkTicker]||{})[w];
       return (hit && Number.isFinite(hit.close)) ? hit.close : NaN;
     });
 
