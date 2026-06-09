@@ -746,9 +746,8 @@ function sparklineSVG(values, compareValues, w=72, h=18){
   const lastY = sy(values[lastIdx]);
 
   return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-            <path class="line" d="${d}"></path>
-            <circle class="dot" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}"></circle>
-          </svg>`;
+          <path class="line" d="${d}"></path>
+        </svg>`;
 }
 
 function render(){
