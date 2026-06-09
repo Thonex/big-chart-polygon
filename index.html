@@ -724,24 +724,28 @@ function sparklineSVG(values, compareValues, w=72, h=18){
   
   if (xs.length < 2) return '';
   
-  const min1 = Math.min(...xs), max1 = Math.max(...xs);
-  const range1 = (max1 - min1) || 1;
+  const base1 = xs[0];
+  const base2 = ys.length ? ys[0] : 1;
   
-  const min2 = ys.length ? Math.min(...ys) : 0;
-  const max2 = ys.length ? Math.max(...ys) : 1;
-  const range2 = (max2 - min2) || 1;
+  const pct1 = values.map(v => Number.isFinite(v) ? ((v/base1)-1)*100 : NaN);
+  const pct2 = (compareValues||[]).map(v => Number.isFinite(v) ? ((v/base2)-1)*100 : NaN);
+  
+  const all = [...pct1.filter(Number.isFinite), ...pct2.filter(Number.isFinite)];
+  
+  const min = Math.min(...all);
+  const max = Math.max(...all);
+  const range = (max - min) || 1;
   
   const n = values.length;
   
   const sx = i => n > 1 ? (i/(n-1))*w : 0;
-  const sy1 = v => h - ((v-min1)/range1)*h;
-  const sy2 = v => h - ((v-min2)/range2)*h;
+  const sy = v => h - ((v-min)/range)*h;
 
   let d1 = '';
   for (let i=0;i<n;i++){
     const v = values[i];
     if (!Number.isFinite(v)) continue;
-    const x=sx(i), y=sy1(v);
+    const x=sx(i), y=sy(pct1[i]);
     d1 += (d1 ? ' L ' : 'M ') + x.toFixed(1) + ' ' + y.toFixed(1);
   }
 
@@ -749,7 +753,7 @@ let d2 = '';
 for (let i=0;i<n;i++){
   const v = compareValues?.[i];
   if (!Number.isFinite(v)) continue;
-  const x=sx(i), y=sy2(v);
+  const x=sx(i), y=sy(pct2[i]);
   d2 += (d2 ? ' L ' : 'M ') + x.toFixed(1) + ' ' + y.toFixed(1);
 }
 
