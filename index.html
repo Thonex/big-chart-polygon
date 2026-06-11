@@ -595,23 +595,21 @@ function computeCompositePct(wkByT, wkArr, halfLife){
 }
 
 function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
-  const λ = lambdaFromHalfLife(halfLife), isFin=(x)=>Number.isFinite(x);
+  const isFin=(x)=>Number.isFinite(x);
   const flowNow={}, priceNow={};
 
   for(const t in wkByT){
-    let sMFV=null, sVOL=null, lastFriClose=null;
-    for(const w of wkArr){
-      const h=wkByT[t][w]; if(!h) continue;
-      if(isFin(h.mfvW)&&isFin(h.volW)){ sMFV=(sMFV==null)?h.mfvW:(λ*sMFV+(1-λ)*h.mfvW);
-        sVOL=(sVOL==null)?h.volW:(λ*sVOL+(1-λ)*h.volW); }
-      lastFriClose=h.close ?? lastFriClose;
-    }
     const wtd=wtdByT[t]||{};
     if (wtd.hasData && isFin(wtd.mfvWTD) && isFin(wtd.volWTD)){
-      const sMFV2=(sMFV==null)?wtd.mfvWTD:(λ*sMFV+(1-λ)*wtd.mfvWTD);
-      const sVOL2=(sVOL==null)?wtd.volWTD:(λ*sVOL+(1-λ)*wtd.volWTD);
-      const ratio=(sVOL2 && sVOL2>0) ? (sMFV2/sVOL2) : null;
-      flowNow[t]=(ratio==null)?null:Math.max(-1,Math.min(1,ratio));
+      const ratio =
+        (wtd.volWTD && wtd.volWTD > 0)
+          ? (wtd.mfvWTD / wtd.volWTD)
+          : null;
+
+      flowNow[t] =
+        (ratio == null)
+          ? null
+          : Math.max(-1, Math.min(1, ratio));
       if (isFin(wtd.todayClose) && isFin(wtd.prevFriClose) && wtd.prevFriClose>0){
         priceNow[t]=Math.log(wtd.todayClose / wtd.prevFriClose);
       } else priceNow[t]=null;
