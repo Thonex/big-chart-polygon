@@ -491,12 +491,14 @@ async function buildHeatmap(url){
       wkByT[t]=weekMap; wtdByT[t]=wtd;
     }
 
-    const allWeeks=Array.from(weeks).sort();
-    const wkArr=allWeeks.slice(-Math.max(1,LOOKBACK_N));
+      const allWeeks = Array.from(weeks).sort();
+
+      const calcWeeks    = allWeeks;
+      const displayWeeks = allWeeks.slice(-Math.max(1, LOOKBACK_N));
 
     // CMF-only weekly percentiles
     const pctV1={};
-    for(const w of wkArr){
+    for(const w of calcWeeks){
       const pair=[];
       for(const t in wkByT){ const hit=wkByT[t][w]; if(hit && Number.isFinite(hit.cmf)) pair.push([t,hit.cmf]); }
       pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
@@ -505,16 +507,16 @@ async function buildHeatmap(url){
 
     // Composite (historical) 
     // Slow & Fast baseline (16/5, 12/3)
-    const compSlow = computeCompositePct(wkByT, wkArr, HALF_LIFE);
-    const compFast = computeCompositePct(wkByT, wkArr, Math.max(1, HALF_LIFE - 2));
+    const compSlow = computeCompositePct(wkByT, calcWeeks, HALF_LIFE);
+    const compFast = computeCompositePct(wkByT, calcWeeks, Math.max(1, HALF_LIFE - 2));
 
     // WTD snapshot
-    const wtdPct = computeWTDPercentile(wkByT, wtdByT, wkArr, HALF_LIFE, weekKeyNext(new Date()));
+    const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
 
-    window._heat = {wkArr,pctV1,compSlow,compFast,wkByT,wtdPct};
+    window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdPct };
     render();
     const modeLabel=(mode==='v2'?'Composite (Price+Flow)':'CMF only');
-    flash(`Loaded ${Object.keys(wkByT).length} tickers • ${wkArr.length} weeks • Mode: ${modeLabel} • WTD ready`);
+    flash(`Loaded ${Object.keys(wkByT).length} tickers • ${displayWeeks.length} weeks • Mode: ${modeLabel} • WTD ready`);
   }catch(err){
     console.error(err); alert(err.message || 'Could not load/parse CSV');
   }
@@ -526,8 +528,8 @@ function recomputeComposite(){
   const H = window._heat;
   if (!H) return;
 
-  H.compSlow = computeCompositePct(H.wkByT, H.wkArr, HALF_LIFE);
-  H.compFast = computeCompositePct(H.wkByT, H.wkArr, Math.max(1, HALF_LIFE - 2));
+  H.compSlow = computeCompositePct(H.wkByT, H.calcWeeks, HALF_LIFE);
+  H.compFast = computeCompositePct(H.wkByT, H.calcWeeks, Math.max(1, HALF_LIFE - 2));
 }
 
 function computeCompositePct(wkByT, wkArr, halfLife){
@@ -801,7 +803,8 @@ const INDUSTRY_BENCHMARK = {
 
 function render(){
   const H=window._heat; if(!H) return;
-  const { wkArr, wkByT, wtdPct } = H;
+  const { displayWeeks, wkByT, wtdPct } = H;
+  const wkArr = displayWeeks;
   const names = Object.keys(wkByT).filter(t => active !== 'sectors' || t !== 'SPY');
   const latest=wkArr[wkArr.length-1];
   const SPARK_WEEKS = Math.min(17, wkArr.length); // ~4 months
