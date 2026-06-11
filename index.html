@@ -469,23 +469,26 @@ async function buildHeatmap(url){
 
       for(const bar of byT[t]){
         const wPrev=weekKeyPrev(bar.d);
-        if(curW && wPrev!==curW) finalizeWeek();
-        curW=wPrev;
+        const wNext=weekKeyNext(bar.d);
 
         let mfm=0;
         if(bar.h!==bar.l){ mfm=((bar.c-bar.l)-(bar.h-bar.c))/(bar.h-bar.l); mfm=clamp(mfm,-1,1); }
         const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
-        if(vol>0){ acc.mfv += mfm*vol; acc.vol += vol; }
-        acc.close=bar.c;
-        weeks.add(wPrev);
 
-        const wNext=weekKeyNext(bar.d);
         if(wNext===curWeekKey){
           wtd.hasData=true;
           if(vol>0){ wtd.mfvWTD += mfm*vol; wtd.volWTD += vol; }
           wtd.todayClose = bar.c;
+          wtd.prevFriClose = acc.close ?? prevFriClose;
+          continue;
         }
-        if(wPrev!==curWeekKey) wtd.prevFriClose = prevFriClose;
+
+        if(curW && wPrev!==curW) finalizeWeek();
+        curW=wPrev;
+        if(vol>0){ acc.mfv += mfm*vol; acc.vol += vol; }
+        acc.close=bar.c;
+        weeks.add(wPrev);
+        wtd.prevFriClose = prevFriClose;
       }
       if(curW) finalizeWeek();
       wkByT[t]=weekMap; wtdByT[t]=wtd;
