@@ -78,10 +78,24 @@
       background: rgba(255,255,255,0.03);
     }
 
-    td[data-ticker]:hover {
-      text-decoration: underline;
-      color: #a8c7ff;           /* lighter on hover */
-    }
+    /* Entire row hover */
+tbody tr {
+  position: relative;
+}
+
+tbody tr:hover {
+  background: rgba(255,255,255,0.03);
+
+  /* exterior blue frame */
+  box-shadow:
+    0 0 0 4px #3aa3ff,
+    0 0 10px rgba(58,163,255,.30);
+
+  border-radius: 4px;
+
+  /* keep frame above neighboring rows */
+  z-index: 10;
+}
 
     /* Hide the Refresh button — pills do the loading now */
     #btnRefresh{ display:none !important; }
