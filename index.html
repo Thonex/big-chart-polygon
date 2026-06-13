@@ -68,25 +68,20 @@
       stroke-width: 1.25;
     }
 
-
-/*    td[data-ticker] {
-      color: #8ab4ff; 
-      font-weight: 600;
+    /* ============= hover fram on rows =============== */
+    tbody tr:hover td {
+        border-top:    4px solid #3aa3ff;
+        border-bottom: 4px solid #3aa3ff;
     }
-*/
-    tbody tr:hover {
-      background: rgba(255,255,255,0.03);
+    
+    tbody tr:hover td:first-child {
+        border-left: 4px solid #3aa3ff;
+        border-radius: 6px 0 0 6px;
     }
-
-    /* Entire row hover */
-    tbody tr:hover {
-      background: rgba(255,255,255,0.03);
     
-      box-shadow: 0 0 0 4px #3aa3ff;
-    
-      border-radius: 6px;
-    
-      z-index: 10;
+    tbody tr:hover td:last-child {
+        border-right: 4px solid #3aa3ff;
+        border-radius: 0 6px 6px 0;
     }
 
     /* Hide the Refresh button — pills do the loading now */
