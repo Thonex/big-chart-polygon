@@ -87,13 +87,20 @@
 
     /* ============= collapse controls =============== */    
     #collapseBtn{
+      position:absolute;
+      left:8px;
+      top:18px;
+    
       cursor:pointer;
       color:#aaa;
       font-size:18px;
-      margin-right:8px;
       user-select:none;
-    }
     
+      z-index:100;
+    }
+    #controls{
+      position:relative;
+    }
     #collapseBtn:hover{
       color:#fff;
     }
