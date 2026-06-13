@@ -295,26 +295,30 @@ const hoverFrameCB = document.getElementById('hoverFrame');
 const hoverEnabled =
   localStorage.getItem('hoverFrame') === 'true';
 
-hoverFrameCB.checked = hoverEnabled;
+if (hoverFrameCB) {
+
+  hoverFrameCB.checked = hoverEnabled;
+
+  hoverFrameCB.addEventListener('change', () => {
+    const enabled = hoverFrameCB.checked;
+
+    document.body.classList.toggle(
+      'hoverFrame',
+      enabled
+    );
+
+    localStorage.setItem(
+      'hoverFrame',
+      enabled
+    );
+  });
+
+}
 
 document.body.classList.toggle(
   'hoverFrame',
   hoverEnabled
 );
-
-hoverFrameCB.addEventListener('change', () => {
-  const enabled = hoverFrameCB.checked;
-
-  document.body.classList.toggle(
-    'hoverFrame',
-    enabled
-  );
-
-  localStorage.setItem(
-    'hoverFrame',
-    enabled
-  );
-});
   
 updateAvgOptionLabel();
 reflectMode();
