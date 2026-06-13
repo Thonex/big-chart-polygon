@@ -73,7 +73,7 @@
       position: relative;
     }
     
-    tbody tr:hover {
+    body.hoverFrame tbody tr:hover {
       background: rgba(255,255,255,0.03);
     
       box-shadow:
@@ -120,6 +120,12 @@
         <span class="wtdNote">
         <input id="decimalsInput" type="number" min="0" max="2" step="1" value="0" style="width:36px; text-align:center; margin-right:6px;">
         Decimals (0–2)
+          
+          <label class="wtdNote" style="margin-left:18px;">
+            <input id="hoverFrame" type="checkbox" checked>
+            Hover frame
+          </label>
+          
         </span>
       </div>
     </div>
@@ -281,6 +287,34 @@ if (decimalsInput){
   });
 }
 
+// ===== Hover Frame =====
+
+const hoverFrameCB = document.getElementById('hoverFrame');
+
+const hoverEnabled =
+  localStorage.getItem('hoverFrame') !== 'false';
+
+hoverFrameCB.checked = hoverEnabled;
+
+document.body.classList.toggle(
+  'hoverFrame',
+  hoverEnabled
+);
+
+hoverFrameCB.addEventListener('change', () => {
+  const enabled = hoverFrameCB.checked;
+
+  document.body.classList.toggle(
+    'hoverFrame',
+    enabled
+  );
+
+  localStorage.setItem(
+    'hoverFrame',
+    enabled
+  );
+});
+  
 updateAvgOptionLabel();
 reflectMode();
 
