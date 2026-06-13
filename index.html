@@ -85,30 +85,6 @@
       z-index: 10;
     }
 
-    /* ============= collapse controls =============== */    
-    #collapseBtn{
-      position:absolute;
-      left:8px;
-      top:5px;
-    
-      cursor:pointer;
-      color:#aaa;
-      font-size:18px;
-      user-select:none;
-    
-      z-index:100;
-    }
-    #controls{
-      position:relative;
-    }
-    #collapseBtn:hover{
-      color:#fff;
-    }
-    
-    body.controlsCollapsed #collapseBtn{
-      color:#3aa3ff;
-    }
-
     /* Hide the Refresh button — pills do the loading now */
     #btnRefresh{ display:none !important; }
   </style>
@@ -116,8 +92,7 @@
 <body>
 
   <!-- Controls -->
-  <header id="controls">
-    <span id="collapseBtn" title="Collapse controls">▼</span>
+  <header>
     <div class="row">
       <span class="pill" id="pillSectors">Sectors</span>
       <span class="pill" id="pillIndustries">Industry Groups</span>
@@ -344,49 +319,6 @@ document.body.classList.toggle(
   'hoverFrame',
   hoverEnabled
 );
-
-// ===== Collapse Controls =====
-
-const collapseBtn =
-  document.getElementById('collapseBtn');
-
-const collapsed =
-  localStorage.getItem('controlsCollapsed') === 'true';
-
-document.body.classList.toggle(
-  'controlsCollapsed',
-  collapsed
-);
-
-if (collapseBtn){
-
-  collapseBtn.textContent =
-    collapsed ? '▶' : '▼';
-
-  collapseBtn.addEventListener('click', () => {
-
-    const next =
-      !document.body.classList.contains(
-        'controlsCollapsed'
-      );
-
-    document.body.classList.toggle(
-      'controlsCollapsed',
-      next
-    );
-
-    collapseBtn.textContent =
-      next ? '▶' : '▼';
-
-    localStorage.setItem(
-      'controlsCollapsed',
-      next
-    );
-
-  });
-
-}
-
   
 updateAvgOptionLabel();
 reflectMode();
