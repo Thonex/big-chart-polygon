@@ -822,8 +822,22 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
   const isFin=(x)=>Number.isFinite(x);
   const flowNow={}, priceNow={};
 
+  function xsecOne(map){
+    const pair=[]; 
+    for(const t in map){ 
+      const v=map[t]; 
+      if(v!=null && Number.isFinite(v)) pair.push([t,v]); 
+    }
+    pair.sort((a,b)=>a[1]-b[1]); 
+    const n=pair.length; 
+    const out={};
+    for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
+    return out;
+  }
+
   for(const t in wkByT){
     const wtd=wtdByT[t]||{};
+
     if (wtd.hasData && isFin(wtd.mfvWTD) && isFin(wtd.volWTD)){
       const ratio =
         (wtd.volWTD && wtd.volWTD > 0)
@@ -834,40 +848,47 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
         (ratio == null)
           ? null
           : Math.max(-1, Math.min(1, ratio));
+
       if (isFin(wtd.todayClose) && isFin(wtd.prevFriClose) && wtd.prevFriClose>0){
         priceNow[t]=Math.log(wtd.todayClose / wtd.prevFriClose);
-      } else priceNow[t]=null;
-    } else { flowNow[t]=null; priceNow[t]=null; }
+      } else {
+        priceNow[t]=null;
+      }
+
+    } else {
+      flowNow[t]=null;
+      priceNow[t]=null;
+    }
   }
 
-  function xsecOne(map){
-    const pair=[]; for(const t in map){ const v=map[t]; if(v!=null && Number.isFinite(v)) pair.push([t,v]); }
-    pair.sort((a,b)=>a[1]-b[1]); const n=pair.length; const out={};
-    for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
-    return out;
-  }
-  const fPct = xsecOne(flowNow), pPct = xsecOne(priceNow);
+  const fPct = xsecOne(flowNow);
 
-  // debug
+  // CMF-only mode: WTD should be CMF percentile only
   if (mode === 'v1') {
-  
-      console.log(
-          'XRT flowPct:',
-          fPct['XRT']
-      );
-  
-      console.log(
-          'XRT pricePct:',
-          pPct['XRT']
-      );
-  
+    return { map: fPct };
   }
-  // end of debug
 
-  const blended={}; for(const t in wkByT){ const f=fPct[t], p=pPct[t]; if (f==null || p==null) continue; blended[t] = BLEND_FLOW*f + BLEND_PRICE*p; }
-  const pair=[]; for(const t in blended){ const v=blended[t]; if(v!=null && Number.isFinite(v)) pair.push([t,v]); }
-  pair.sort((a,b)=>a[1]-b[1]); const n=pair.length; const out={};
+  const pPct = xsecOne(priceNow);
+
+  const blended={}; 
+  for(const t in wkByT){ 
+    const f=fPct[t], p=pPct[t]; 
+    if (f==null || p==null) continue; 
+    blended[t] = BLEND_FLOW*f + BLEND_PRICE*p; 
+  }
+
+  const pair=[]; 
+  for(const t in blended){ 
+    const v=blended[t]; 
+    if(v!=null && Number.isFinite(v)) pair.push([t,v]); 
+  }
+
+  pair.sort((a,b)=>a[1]-b[1]); 
+  const n=pair.length; 
+  const out={};
+
   for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
+
   return { map: out };
 }
 
