@@ -550,7 +550,7 @@ async function buildHeatmap(url){
            ) < 10
          );
     
-    
+    /*
     console.log(
       'Latest bar:',
       latestBarDate?.toISOString().slice(0,10),
@@ -561,7 +561,7 @@ async function buildHeatmap(url){
       'showCompletedWeekInHistory:',
       showCompletedWeekInHistory
     );
-    
+    */
     for(const t in byT){
       const weekMap={};
       let prevFriClose=null;
@@ -624,7 +624,7 @@ async function buildHeatmap(url){
       }
       if(curW) finalizeWeek();
 
-
+      /*
       if (t === 'XRT') {
       
         console.log(
@@ -664,10 +664,10 @@ async function buildHeatmap(url){
         );
       
       }
-
+      */
 
       
-
+      /*
       if (t === 'XRT') {
       
         console.log(
@@ -686,7 +686,7 @@ async function buildHeatmap(url){
         );
       
       }
-      
+      */
       wkByT[t]=weekMap; wtdByT[t]=wtd;
     }
 
@@ -710,6 +710,7 @@ async function buildHeatmap(url){
     const compFast = computeCompositePct(wkByT, calcWeeks, Math.max(1, HALF_LIFE - 2));
 
     // WTD snapshot
+    /*
     // debug
     console.log(
       'Historical universe:',
@@ -725,11 +726,12 @@ async function buildHeatmap(url){
         .length
     );
     // end  of debug
-    
+    */
     const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
 
     window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdPct };
 
+    /*
     // debug
     console.log(
       'Historical percentile:',
@@ -741,6 +743,9 @@ async function buildHeatmap(url){
       wtdPct.map['XRT']
     );
     // end of debug
+    */
+
+    
     render();
     const modeLabel=(mode==='v2'?'Composite (Price+Flow)':'CMF only');
     flash(`Loaded ${Object.keys(wkByT).length} tickers • ${displayWeeks.length} weeks • Mode: ${modeLabel} • WTD ready`);
