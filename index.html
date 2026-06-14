@@ -614,6 +614,26 @@ async function buildHeatmap(url){
         wtd.prevFriClose = prevFriClose;
       }
       if(curW) finalizeWeek();
+
+      if (t === 'XRT') {
+      
+        console.log(
+          'Ticker:', t,
+      
+          'Historical 6/12:',
+          weekMap['2026-06-12'],
+      
+          'WTD:',
+          wtd,
+      
+          'Raw WTD CMF:',
+          wtd.volWTD > 0
+            ? wtd.mfvWTD / wtd.volWTD
+            : null
+        );
+      
+      }
+      
       wkByT[t]=weekMap; wtdByT[t]=wtd;
     }
 
