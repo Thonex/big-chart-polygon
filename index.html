@@ -486,80 +486,35 @@ async function buildHeatmap(url){
     const wkByT = {}, wtdByT = {};
 
     // --------------------------------------------------------------------
-    // Find latest bar in spreadsheet
+    // Determine the CURRENT week from the latest bar actually present
+    // in the spreadsheet, NOT from the system clock.
+    // This handles holidays, delayed imports, weekends, and time zones.
     // --------------------------------------------------------------------
-    
+
     let latestBarDate = null;
-    
+
     for (const t in byT) {
-    
       const arr = byT[t];
-    
-      if (!arr || arr.length === 0)
-        continue;
-    
-      const lastBar = arr[arr.length - 1];
-    
-      if (
-          !latestBarDate ||
-          lastBar.d > latestBarDate
-      ){
+      if (!arr || arr.length === 0) continue;
+
+      const lastBar = arr[arr.length - 1]; // already sorted earlier
+
+      if (!latestBarDate || lastBar.d > latestBarDate) {
         latestBarDate = lastBar.d;
       }
     }
-    
-    // The most recent week represented in the data
+
     const curWeekKey = latestBarDate
       ? weekKeyNext(latestBarDate)
       : null;
-    
-    
-    // ----------------------------------------------------
-    // Weekend logic
-    //
-    // Mon-Fri  -> newest week = WTD only
-    // Sat-Sun  -> newest week = completed week
-    // ----------------------------------------------------
-    
-    const now = new Date();
 
-    const dow = now.getDay(); // Sun=0 ... Sat=6
-    
-    const showCompletedWeekInHistory =
-    
-         // Saturday
-         dow === 6
-    
-         // Sunday
-      || dow === 0
-    
-         // Monday before 10am Eastern
-      || (
-           dow === 1 &&
-           Number(
-             now.toLocaleString(
-               'en-US',
-               {
-                 timeZone:'America/New_York',
-                 hour:'numeric',
-                 hour12:false
-               }
-             )
-           ) < 10
-         );
-    
-    
     console.log(
-      'Latest bar:',
+      'WTD anchored to:',
       latestBarDate?.toISOString().slice(0,10),
-    
-      'Current week:',
-      curWeekKey,
-    
-      'showCompletedWeekInHistory:',
-      showCompletedWeekInHistory
+      'week:',
+      curWeekKey
     );
-    
+
     for(const t in byT){
       const weekMap={};
       let prevFriClose=null;
@@ -583,25 +538,12 @@ async function buildHeatmap(url){
         if(bar.h!==bar.l){ mfm=((bar.c-bar.l)-(bar.h-bar.c))/(bar.h-bar.l); mfm=clamp(mfm,-1,1); }
         const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
 
-        if (wNext === curWeekKey){
-        
-            wtd.hasData = true;
-        
-            if(vol > 0){
-              wtd.mfvWTD += mfm * vol;
-              wtd.volWTD += vol;
-            }
-        
-            wtd.todayClose = bar.c;
-            wtd.prevFriClose = acc.close ?? prevFriClose;
-        
-            // Mon-Fri:
-            // keep newest week OUT of historical
-             if (!showCompletedWeekInHistory)
-                continue;
-        
-            // Sat/Sun:
-            // fall through so it ALSO goes into historical
+        if(wNext===curWeekKey){
+          wtd.hasData=true;
+          if(vol>0){ wtd.mfvWTD += mfm*vol; wtd.volWTD += vol; }
+          wtd.todayClose = bar.c;
+          wtd.prevFriClose = acc.close ?? prevFriClose;
+          continue;
         }
 
         if(curW && wPrev!==curW) finalizeWeek();
