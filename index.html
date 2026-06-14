@@ -425,6 +425,7 @@ function flash(msg){ statusEl.textContent=msg; setTimeout(()=>statusEl.textConte
 /* ---------------- Date/Math helpers (unchanged) ---------------- */
 function weekKeyPrev(dt){ const x=new Date(dt); const wd=x.getUTCDay(); const back=(wd-5+7)%7; x.setUTCDate(x.getUTCDate()-back); x.setUTCHours(0,0,0,0); return x.toISOString().slice(0,10); }
 function weekKeyNext(dt){ const x=new Date(dt); const wd=x.getUTCDay(); const fwd=(5-wd+7)%7; x.setUTCDate(x.getUTCDate()+fwd); x.setUTCHours(0,0,0,0); return x.toISOString().slice(0,10); }
+function getPacificDow(){ return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', weekday: 'short' }).format(new Date());}
 function lambdaFromHalfLife(H){ return Math.pow(0.5, 1/Math.max(1e-9,H)); }
 function clamp(x,lo,hi){ return Math.max(lo,Math.min(hi,x)); }
 function ewma(arr,lambda){ let s=null; const out={}; for(const {w,value} of arr){ const v=Number.isFinite(value)?value:null; if(v==null){ if(s!=null) out[w]=s; continue; } s=(s==null)?v:(lambda*s+(1-lambda)*v); out[w]=s; } return out; }
@@ -514,7 +515,19 @@ async function buildHeatmap(url){
       'week:',
       curWeekKey
     );
-
+    const pacificDow = getPacificDow();
+    
+    const showWTD =
+      pacificDow !== 'Sat' &&
+      pacificDow !== 'Sun';
+    
+    console.log(
+      'Pacific day:',
+      pacificDow,
+      'showWTD:',
+      showWTD
+    );
+    
     for(const t in byT){
       const weekMap={};
       let prevFriClose=null;
@@ -577,7 +590,14 @@ async function buildHeatmap(url){
     const compFast = computeCompositePct(wkByT, calcWeeks, Math.max(1, HALF_LIFE - 2));
 
     // WTD snapshot
-    const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
+    const wtdPct = showWTD
+      ? computeWTDPercentile(
+          wkByT,
+          wtdByT,
+          calcWeeks,
+          HALF_LIFE
+        )
+      : { map:{} };
 
     window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdPct };
     render();
