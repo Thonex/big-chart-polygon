@@ -713,6 +713,18 @@ async function buildHeatmap(url){
     const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
 
     window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdPct };
+
+    // debug
+    console.log(
+      'Historical percentile:',
+      pctV1['XRT']?.['2026-06-12']
+    );
+    
+    console.log(
+      'WTD percentile:',
+      wtdPct.map['XRT']
+    );
+    // end of debug
     render();
     const modeLabel=(mode==='v2'?'Composite (Price+Flow)':'CMF only');
     flash(`Loaded ${Object.keys(wkByT).length} tickers • ${displayWeeks.length} weeks • Mode: ${modeLabel} • WTD ready`);
