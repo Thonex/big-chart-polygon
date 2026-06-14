@@ -710,6 +710,22 @@ async function buildHeatmap(url){
     const compFast = computeCompositePct(wkByT, calcWeeks, Math.max(1, HALF_LIFE - 2));
 
     // WTD snapshot
+    // debug
+    console.log(
+      'Historical universe:',
+      Object.keys(pctV1)
+        .filter(t => pctV1[t]?.['2026-06-12'] != null)
+        .length
+    );
+    
+    console.log(
+      'WTD universe:',
+      Object.keys(wtdByT)
+        .filter(t => wtdByT[t]?.hasData)
+        .length
+    );
+    // end  of debug
+    
     const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
 
     window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdPct };
