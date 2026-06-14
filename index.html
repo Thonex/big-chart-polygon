@@ -848,6 +848,22 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
   }
   const fPct = xsecOne(flowNow), pPct = xsecOne(priceNow);
 
+  // debug
+  if (mode === 'v1') {
+  
+      console.log(
+          'XRT flowPct:',
+          fPct['XRT']
+      );
+  
+      console.log(
+          'XRT pricePct:',
+          pPct['XRT']
+      );
+  
+  }
+  // end of debug
+
   const blended={}; for(const t in wkByT){ const f=fPct[t], p=pPct[t]; if (f==null || p==null) continue; blended[t] = BLEND_FLOW*f + BLEND_PRICE*p; }
   const pair=[]; for(const t in blended){ const v=blended[t]; if(v!=null && Number.isFinite(v)) pair.push([t,v]); }
   pair.sort((a,b)=>a[1]-b[1]); const n=pair.length; const out={};
