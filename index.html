@@ -560,7 +560,17 @@ async function buildHeatmap(url){
              )
            ) < 10
          );
+
+    const currentTradingWeek =
+      weekKeyNext(now);
     
+    const suppressStaleWTD =
+    
+         dow >= 1      // Monday+
+    
+      && dow <= 5      // through Friday
+    
+      && curWeekKey !== currentTradingWeek;
     /*
     console.log(
       'Latest bar:',
@@ -595,7 +605,7 @@ async function buildHeatmap(url){
         if(bar.h!==bar.l){ mfm=((bar.c-bar.l)-(bar.h-bar.c))/(bar.h-bar.l); mfm=clamp(mfm,-1,1); }
         const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
 
-       if (w === curWeekKey){
+       if (!suppressStaleWTD && w === curWeekKey){
 
             wtd.hasData = true;
         
