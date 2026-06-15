@@ -525,7 +525,17 @@ async function buildHeatmap(url){
     const curWeekKey = latestBarDate
       ? weekKeyNext(latestBarDate)
       : null;
-
+    // console log ============================
+    console.log(
+      'latestBarDate:',
+      latestBarDate?.toISOString().slice(0,10)
+    );
+    
+    console.log(
+      'curWeekKey:',
+      curWeekKey
+    );
+    // end of console log ============================
     // ----------------------------------------------------
     // Weekend logic
     //
@@ -634,51 +644,17 @@ async function buildHeatmap(url){
       }
       if(curW) finalizeWeek();
 
-      /*
       if (t === 'XRT') {
       
         console.log(
-          'Ticker:', t
+          'latestBarDate:',
+          latestBarDate?.toISOString().slice(0,10)
         );
       
         console.log(
-          'Historical:',
-          weekMap['2026-06-12']
+          'curWeekKey:',
+          curWeekKey
         );
-      
-        console.log(
-          'WTD:',
-          wtd
-        );
-      
-        console.log(
-          'Historical CMF:',
-          weekMap['2026-06-12']?.cmf
-        );
-      
-        console.log(
-          'Historical Vol:',
-          weekMap['2026-06-12']?.volW
-        );
-      
-        console.log(
-          'WTD CMF:',
-          wtd.volWTD > 0
-            ? wtd.mfvWTD / wtd.volWTD
-            : null
-        );
-      
-        console.log(
-          'WTD Vol:',
-          wtd.volWTD
-        );
-      
-      }
-      */
-
-      
-      /*
-      if (t === 'XRT') {
       
         console.log(
           'Ticker:', t,
@@ -696,7 +672,6 @@ async function buildHeatmap(url){
         );
       
       }
-      */
       wkByT[t]=weekMap; wtdByT[t]=wtd;
     }
 
