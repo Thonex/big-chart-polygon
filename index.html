@@ -357,8 +357,21 @@ function setActive(which){
 pillS.onclick=()=>{ active==='sectors' ? loadActive() : setActive('sectors'); };
 pillI.onclick=()=>{ active==='industries' ? loadActive() : setActive('industries'); };
 
-modeV1.onclick=()=>{ mode='v1'; localStorage.setItem(MODE_KEY,mode); reflectMode(); render(); };
-modeV2.onclick=()=>{ mode='v2'; localStorage.setItem(MODE_KEY,mode); reflectMode(); render(); };
+modeV1.onclick=()=>{
+  mode='v1';
+  localStorage.setItem(MODE_KEY,mode);
+  reflectMode();
+  recomputeWTD();
+  render();
+};
+
+modeV2.onclick=()=>{
+  mode='v2';
+  localStorage.setItem(MODE_KEY,mode);
+  reflectMode();
+  recomputeWTD();
+  render();
+};
 btnRefresh.onclick=()=>loadActive();
 sortSel.onchange=()=>render();
 lookSel.onchange=async()=>{ LOOKBACK_N=+lookSel.value; localStorage.setItem(N_KEY,LOOKBACK_N); updateAvgOptionLabel(); await loadActive(); };
@@ -733,7 +746,7 @@ async function buildHeatmap(url){
     */
     const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
 
-    window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdPct };
+    window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdByT, wtdPct };
 
     /*
     // debug
@@ -826,6 +839,18 @@ function computeCompositePct(wkByT, wkArr, halfLife){
   }
   return out;
 }
+
+function recomputeWTD(){
+  const H = window._heat;
+  if (!H) return;
+
+  H.wtdPct = computeWTDPercentile(
+    H.wkByT,
+    H.wtdByT,
+    H.calcWeeks,
+    HALF_LIFE
+  );
+}  
 
 function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
   const isFin=(x)=>Number.isFinite(x);
