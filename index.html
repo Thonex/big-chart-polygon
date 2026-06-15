@@ -521,12 +521,10 @@ async function buildHeatmap(url){
       }
     }
     
-    // ----------------------------------------------------
-    // Determine whether the spreadsheet already contains
-    // bars from the CURRENT trading week.
-    //
-    // If not, disable WTD completely.
-    // ----------------------------------------------------
+    // The most recent week represented in the data
+    const curWeekKey = latestBarDate
+      ? weekKeyNext(latestBarDate)
+      : null;
     
     const now = new Date();
     
@@ -538,14 +536,10 @@ async function buildHeatmap(url){
         ? weekKeyNext(latestBarDate)
         : null;
     
-    const curWeekKey =
+    const enableWTD =
     
-      latestDataWeek === currentTradingWeek
-    
-        ? currentTradingWeek
-    
-        : null;
-    
+      latestDataWeek === currentTradingWeek;
+        
     
     // ----------------------------------------------------
     // Weekend logic
@@ -615,7 +609,7 @@ async function buildHeatmap(url){
         if(bar.h!==bar.l){ mfm=((bar.c-bar.l)-(bar.h-bar.c))/(bar.h-bar.l); mfm=clamp(mfm,-1,1); }
         const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
 
-       if (w === curWeekKey){
+       if (enableWTD && w === curWeekKey){
 
             wtd.hasData = true;
         
