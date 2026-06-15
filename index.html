@@ -1,9 +1,28 @@
 <!--
-Big Charts V11
+=====================================================================
+ Big Charts V12 Commented
+
+ Documentation / readability pass.
+ Functional code intentionally unchanged.
+ Existing comments preserved.
+
+ Recent WTD fixes:
+ - Historical week aggregation standardized on weekKeyNext().
+ - Weekend behavior:
+     Mon-Fri : newest week is WTD only.
+     Sat-Sun : newest week becomes historical + WTD.
+ - Suppress stale WTD if spreadsheet data is older than current week.
+ - Composite now uses CMF only (BLEND_FLOW=1.0).
+=====================================================================
+-->
+
+<!--
+Big Charts V12
 Working WTD
 Historical week fixed to use weekKeyNext()
 CMF mode WTD bug fixed 2026-06-14
 Removed Price from Composite calc. CMF = 1.0 (100%)
+Fixed WTD showing up after Monday Morning market open
 -->
 <!doctype html>
 <html lang="en">
@@ -333,6 +352,10 @@ reflectMode();
 
 /* ---------------- Loading ---------------- */
 let isLoading=false;
+
+/* ------------------------------------------------------------------
+   Loads the currently selected dataset (Sectors or Industry Groups) and rebuilds the heatmap.
+------------------------------------------------------------------- */
 async function loadActive(){
   if (isLoading) return;
   isLoading = true;
@@ -346,6 +369,10 @@ async function loadActive(){
   }
 }
 
+
+/* ------------------------------------------------------------------
+   Switches between Sectors and Industry Groups and triggers a reload.
+------------------------------------------------------------------- */
 function setActive(which){
   active = which==='sectors' ? 'sectors' : 'industries';
   localStorage.setItem('heatmap_active',active);
@@ -378,6 +405,10 @@ pctToggle.onclick = () => {
 };
 document.querySelector('header .row:last-child').appendChild(pctToggle);
 
+
+/* ------------------------------------------------------------------
+   Builds the Google Finance URL for a ticker symbol.
+------------------------------------------------------------------- */
 function getFinanceLink(ticker){
 
   const FULL_MAP = {
@@ -419,6 +450,10 @@ function getFinanceLink(ticker){
   return `https://www.google.com/finance/beta/quote/${symbol}?window=1Y&indicator=SMA%3A25%3Aprice%2CMACD%3A5%3A10%3A9%3Aclose&type=candle`;
 }
   
+
+/* ------------------------------------------------------------------
+   Formats numbers according to the DISPLAY_DECIMALS setting.
+------------------------------------------------------------------- */
 function fmt(val){
   if (val == null) return '';
   return DISPLAY_DECIMALS === 0
@@ -426,20 +461,52 @@ function fmt(val){
     : val.toFixed(DISPLAY_DECIMALS);
 }
 
+
+/* ------------------------------------------------------------------
+   Updates the UI to reflect the active calculation mode.
+------------------------------------------------------------------- */
 function reflectMode(){ modeV1.classList.toggle('active',mode==='v1'); modeV2.classList.toggle('active',mode==='v2'); }
+
+/* ------------------------------------------------------------------
+   Updates the sort dropdown label to match the current lookback window.
+------------------------------------------------------------------- */
 function updateAvgOptionLabel(){ if (optAvg) optAvg.textContent=`${LOOKBACK_N}\u2011week avg (desc)`; }
+
+/* ------------------------------------------------------------------
+   Displays a temporary status message.
+------------------------------------------------------------------- */
 function flash(msg){ statusEl.textContent=msg; setTimeout(()=>statusEl.textContent='',3000); }
 
 /* ---------------- Date/Math helpers (unchanged) ---------------- */
 // function weekKeyPrev(dt){ const x=new Date(dt); const wd=x.getUTCDay(); const back=(wd-5+7)%7; x.setUTCDate(x.getUTCDate()-back); x.setUTCHours(0,0,0,0); return x.toISOString().slice(0,10); }
+
+/* ------------------------------------------------------------------
+   Converts a date into the Friday-ending trading week key.
+------------------------------------------------------------------- */
 function weekKeyNext(dt){ const x=new Date(dt); const wd=x.getUTCDay(); const fwd=(5-wd+7)%7; x.setUTCDate(x.getUTCDate()+fwd); x.setUTCHours(0,0,0,0); return x.toISOString().slice(0,10); }
+
+/* ------------------------------------------------------------------
+   Converts half-life into an EWMA decay constant.
+------------------------------------------------------------------- */
 function lambdaFromHalfLife(H){ return Math.pow(0.5, 1/Math.max(1e-9,H)); }
+
+/* ------------------------------------------------------------------
+   Restrains a value to a specified range.
+------------------------------------------------------------------- */
 function clamp(x,lo,hi){ return Math.max(lo,Math.min(hi,x)); }
+
+/* ------------------------------------------------------------------
+   Computes an exponentially weighted moving average.
+------------------------------------------------------------------- */
 function ewma(arr,lambda){ let s=null; const out={}; for(const {w,value} of arr){ const v=Number.isFinite(value)?value:null; if(v==null){ if(s!=null) out[w]=s; continue; } s=(s==null)?v:(lambda*s+(1-lambda)*v); out[w]=s; } return out; }
 
 /* ======================================================================
    Data build (unchanged except for status text)
 ====================================================================== */
+
+/* ------------------------------------------------------------------
+   Main pipeline: loads CSV, aggregates weekly data, computes percentiles and WTD.
+------------------------------------------------------------------- */
 async function buildHeatmap(url){
   try{
     const needsProxy = location.protocol === 'file:';
@@ -517,7 +584,15 @@ async function buildHeatmap(url){
       : null;
     
     
-    // ----------------------------------------------------
+    // ====================================================
+    // Recent WTD fixes (June 2026)
+    //
+    // Prevent stale WTD values during weekdays.
+    // Allow completed weeks to appear historically on weekends.
+    // Historical and WTD weeks both use weekKeyNext().
+    // ====================================================
+
+// ----------------------------------------------------
     // Weekend logic
     //
     // Mon-Fri  -> newest week = WTD only
@@ -664,6 +739,10 @@ async function buildHeatmap(url){
 
 /* Composite / WTD (unchanged maths) */
 
+
+/* ------------------------------------------------------------------
+   Recomputes historical composites after settings change.
+------------------------------------------------------------------- */
 function recomputeComposite(){
   const H = window._heat;
   if (!H) return;
@@ -672,6 +751,10 @@ function recomputeComposite(){
   H.compFast = computeCompositePct(H.wkByT, H.calcWeeks, Math.max(1, HALF_LIFE - 2));
 }
 
+
+/* ------------------------------------------------------------------
+   Builds smoothed historical CMF percentile rankings.
+------------------------------------------------------------------- */
 function computeCompositePct(wkByT, wkArr, halfLife){
   const λ = lambdaFromHalfLife(halfLife);
   const isFin=(x)=>Number.isFinite(x);
@@ -731,6 +814,10 @@ function computeCompositePct(wkByT, wkArr, halfLife){
   return out;
 }
 
+
+/* ------------------------------------------------------------------
+   Builds the current week WTD percentile rankings.
+------------------------------------------------------------------- */
 function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
   const isFin=(x)=>Number.isFinite(x);
   const flowNow={}, priceNow={};
@@ -808,6 +895,10 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
 /* ======================================================================
    Rendering (+ sparklines)
 ====================================================================== */
+
+/* ------------------------------------------------------------------
+   Returns the displayed historical value for a ticker/week.
+------------------------------------------------------------------- */
 function getVal(t,w){
   const H = window._heat;
   if(!H) return null;
@@ -819,12 +910,20 @@ function getVal(t,w){
     return (H.pctV1[t]||{})[w];
   }
 }
+
+/* ------------------------------------------------------------------
+   Returns the arithmetic mean of valid values.
+------------------------------------------------------------------- */
 function avg(arr){
   const f = arr.filter(v => v != null);
   return f.length > 0 ? (f.reduce((a,b)=>a+b,0) / f.length) : null;
 }
 
 // ===================== MOMENTUM METER =====================
+
+/* ------------------------------------------------------------------
+   Utility EWMA used by the momentum meter.
+------------------------------------------------------------------- */
 function ewmaFromArray(arr, halfLife) {
   const λ = Math.pow(0.5, 1 / halfLife);
   let s = null;
@@ -837,6 +936,10 @@ function ewmaFromArray(arr, halfLife) {
 
 
 
+
+/* ------------------------------------------------------------------
+   Renders the MACD-style momentum meter.
+------------------------------------------------------------------- */
 function renderMeter(data) {
   if (!data || data.length === 0) return '';
 
@@ -895,6 +998,10 @@ function renderMeter(data) {
 }
 
 /* sparkline mini SVG: last ~4 months of weekly closes */
+
+/* ------------------------------------------------------------------
+   Renders the comparative sparkline SVG.
+------------------------------------------------------------------- */
 function sparklineSVG(values, compareValues, w=72, h=18){
   const xs = values.filter(v => Number.isFinite(v));
   const ys = (compareValues||[]).filter(v => Number.isFinite(v));
@@ -973,6 +1080,10 @@ const INDUSTRY_BENCHMARK = {
   FUTY:'XLU', PHO:'XLU'
 };  
 
+
+/* ------------------------------------------------------------------
+   Renders the complete heatmap table and attaches events.
+------------------------------------------------------------------- */
 function render(){
   const H=window._heat; if(!H) return;
   const { displayWeeks, wkByT, wtdPct } = H;
