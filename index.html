@@ -104,8 +104,8 @@ CMF mode WTD bug fixed 2026-06-14
       <span class="pill" id="pillIndustries">Industry Groups</span>
 
       <div class="row" title="Calculation engine">
-        <button id="modeV1">CMF raw</button>
-        <button id="modeV2" class="active">CMF smoothed</button>
+        <button id="modeV1">CMF Raw</button>
+        <button id="modeV2" class="active">CMF Smoothed</button>
       </div>
 
       <div class="row">
@@ -757,7 +757,7 @@ async function buildHeatmap(url){
 
     
     render();
-    const modeLabel=(mode==='v2'?'CMF smoothed':'CMF raw');
+    const modeLabel=(mode==='v2'?'CMF Smoothed':'CMF Raw');
     flash(`Loaded ${Object.keys(wkByT).length} tickers • ${displayWeeks.length} weeks • Mode: ${modeLabel} • WTD ready`);
   }catch(err){
     console.error(err); alert(err.message || 'Could not load/parse CSV');
