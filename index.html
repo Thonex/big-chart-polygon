@@ -526,17 +526,7 @@ async function buildHeatmap(url){
       ? weekKeyNext(latestBarDate)
       : null;
     
-    const now = new Date();
     
-    const currentTradingWeek =
-      weekKeyNext(now);
-    
-    const latestDataWeek =
-      latestBarDate
-        ? weekKeyNext(latestBarDate)
-        : null;
-    
-    const enableWTD =
     
       latestDataWeek === currentTradingWeek;
         
@@ -609,7 +599,7 @@ async function buildHeatmap(url){
         if(bar.h!==bar.l){ mfm=((bar.c-bar.l)-(bar.h-bar.c))/(bar.h-bar.l); mfm=clamp(mfm,-1,1); }
         const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
 
-       if (enableWTD && w === curWeekKey){
+       if (w === curWeekKey){
 
             wtd.hasData = true;
         
