@@ -168,9 +168,15 @@ CMF mode WTD bug fixed 2026-06-14
 /* ---------------- Config toggles ---------------- */
 
 let DISPLAY_DECIMALS = 0; // 0 = integers, 1 = one decimal, 2 = two decimals, etc.
-
+// ========================================================
+// ============== Change Blend flow.
+// ============== BLEND_FLOW = 1.00 means no price weighting
+// ========================================================
 const BLEND_FLOW = 1.00;
 const BLEND_PRICE = 0;
+// ========================================================
+// ========================================================
+// ========================================================
 let RE_PERCENTILE_AFTER_BLEND = localStorage.getItem('rePctBlend') === 'true';
 
 /* ---------------- Data sources (CSV) ---------------- */
