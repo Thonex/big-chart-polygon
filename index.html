@@ -521,10 +521,30 @@ async function buildHeatmap(url){
       }
     }
     
-    // The most recent week represented in the data
-    const curWeekKey = latestBarDate
-      ? weekKeyNext(latestBarDate)
-      : null;
+    // ----------------------------------------------------
+    // Determine whether the spreadsheet already contains
+    // bars from the CURRENT trading week.
+    //
+    // If not, disable WTD completely.
+    // ----------------------------------------------------
+    
+    const now = new Date();
+    
+    const currentTradingWeek =
+      weekKeyNext(now);
+    
+    const latestDataWeek =
+      latestBarDate
+        ? weekKeyNext(latestBarDate)
+        : null;
+    
+    const curWeekKey =
+    
+      latestDataWeek === currentTradingWeek
+    
+        ? currentTradingWeek
+    
+        : null;
     
     
     // ----------------------------------------------------
