@@ -852,29 +852,30 @@ function recomputeWTD(){
   );
 }  
 
+
 function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
-  const isFin=(x)=>Number.isFinite(x);
-  const flowNow={}, priceNow={};
 
-  function xsecOne(map){
-    const pair=[]; 
-    for(const t in map){ 
-      const v=map[t]; 
-      if(v!=null && Number.isFinite(v)) pair.push([t,v]); 
-    }
-    pair.sort((a,b)=>a[1]-b[1]); 
-    const n=pair.length; 
-    const out={};
-    for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
-    return out;
-  }
+  const isFin = x => Number.isFinite(x);
 
-  for(const t in wkByT){
-    const wtd=wtdByT[t]||{};
+  const flowNow  = {};
+  const priceNow = {};
 
-    if (wtd.hasData && isFin(wtd.mfvWTD) && isFin(wtd.volWTD)){
+  // ------------------------------------
+  // Build raw WTD flow and price series
+  // ------------------------------------
+
+  for (const t in wkByT){
+
+    const wtd = wtdByT[t] || {};
+
+    if (
+      wtd.hasData &&
+      isFin(wtd.mfvWTD) &&
+      isFin(wtd.volWTD)
+    ){
+
       const ratio =
-        (wtd.volWTD && wtd.volWTD > 0)
+        (wtd.volWTD > 0)
           ? (wtd.mfvWTD / wtd.volWTD)
           : null;
 
@@ -883,47 +884,222 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
           ? null
           : Math.max(-1, Math.min(1, ratio));
 
-      if (isFin(wtd.todayClose) && isFin(wtd.prevFriClose) && wtd.prevFriClose>0){
-        priceNow[t]=Math.log(wtd.todayClose / wtd.prevFriClose);
-      } else {
-        priceNow[t]=null;
+      if (
+        isFin(wtd.todayClose) &&
+        isFin(wtd.prevFriClose) &&
+        wtd.prevFriClose > 0
+      ){
+
+        priceNow[t] =
+          Math.log(
+            wtd.todayClose /
+            wtd.prevFriClose
+          );
+
+      }
+      else {
+
+        priceNow[t] = null;
+
       }
 
-    } else {
-      flowNow[t]=null;
-      priceNow[t]=null;
     }
+    else {
+
+      flowNow[t]  = null;
+      priceNow[t] = null;
+
+    }
+
   }
+
+  // ------------------------------------
+  // Cross-sectional percentile helper
+  // ------------------------------------
+
+  function xsecOne(map){
+
+    const pair = [];
+
+    for (const t in map){
+
+      const v = map[t];
+
+      if (
+        v != null &&
+        Number.isFinite(v)
+      ){
+
+        pair.push([t,v]);
+
+      }
+
+    }
+
+    pair.sort(
+      (a,b) => a[1] - b[1]
+    );
+
+    const n = pair.length;
+
+    const out = {};
+
+    for(let i=0;i<n;i++){
+
+      out[pair[i][0]] =
+
+        n > 1
+
+          ? i * 100 / (n - 1)
+
+          : 50;
+
+    }
+
+    return out;
+
+  }
+
+  // ------------------------------------
+  // FLOW percentile
+  // ------------------------------------
 
   const fPct = xsecOne(flowNow);
 
-  // CMF-only mode: WTD should be CMF percentile only
+  // CMF-only mode:
+  // WTD = raw CMF percentile
+
   if (mode === 'v1') {
-    return { map: fPct };
+
+    return {
+
+      map: fPct
+
+    };
+
   }
+
+  // ------------------------------------
+  // PRICE percentile
+  // ------------------------------------
 
   const pPct = xsecOne(priceNow);
 
-  const blended={}; 
-  for(const t in wkByT){ 
-    const f=fPct[t], p=pPct[t]; 
-    if (f==null || p==null) continue; 
-    blended[t] = BLEND_FLOW*f + BLEND_PRICE*p; 
+  // ------------------------------------
+  // Blend Flow + Price
+  // ------------------------------------
+
+  const blended = {};
+
+  for (const t in wkByT){
+
+    const f = fPct[t];
+
+    const p = pPct[t];
+
+    if (
+
+      f == null ||
+
+      p == null
+
+    )
+
+      continue;
+
+    blended[t] =
+
+      BLEND_FLOW  * f +
+
+      BLEND_PRICE * p;
+
+
+    // ======================
+    // TEMP DEBUG
+    // ======================
+
+    if (t === 'CIBR') {
+
+      console.log(
+
+        'CIBR flowPct:',
+
+        f
+
+      );
+
+      console.log(
+
+        'CIBR pricePct:',
+
+        p
+
+      );
+
+      console.log(
+
+        'CIBR blended:',
+
+        blended[t]
+
+      );
+
+    }
+
   }
 
-  const pair=[]; 
-  for(const t in blended){ 
-    const v=blended[t]; 
-    if(v!=null && Number.isFinite(v)) pair.push([t,v]); 
+  // ------------------------------------
+  // Re-percentile blended scores
+  // ------------------------------------
+
+  const pair = [];
+
+  for (const t in blended){
+
+    const v = blended[t];
+
+    if (
+
+      v != null &&
+
+      Number.isFinite(v)
+
+    ){
+
+      pair.push([t,v]);
+
+    }
+
   }
 
-  pair.sort((a,b)=>a[1]-b[1]); 
-  const n=pair.length; 
-  const out={};
+  pair.sort(
 
-  for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
+    (a,b) => a[1] - b[1]
 
-  return { map: out };
+  );
+
+  const n = pair.length;
+
+  const out = {};
+
+  for(let i=0;i<n;i++){
+
+    out[pair[i][0]] =
+
+      n > 1
+
+        ? i * 100 / (n - 1)
+
+        : 50;
+
+  }
+
+  return {
+
+    map: out
+
+  };
+
 }
 
 /* ======================================================================
