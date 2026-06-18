@@ -165,24 +165,11 @@ Fixed WTD showing up after Monday Morning market open
         <option>7</option><option>10</option><option>12</option><option>16</option>
       </select>
 
-      <label class="muted small">Price</label>
-
       <select id="pricePeriod">
-
-        <option value="wtd">WTD</option>
-
-        <option value="1w">
-          1 Week
-        </option>
-
-        <option value="1m" selected>
-          1 Month
-        </option>
-
-        <option value="3m">
-          3 Month
-        </option>
-
+        <option value="wtd">$% WTD</option>
+        <option value="1w">$% 1W</option>
+        <option value="1m" selected>$% 1M</option>
+        <option value="3m">$% 3M</option>
       </select>
 
       <button id="btnRefresh">Refresh</button>
@@ -1278,7 +1265,7 @@ function render(){
     const th = [
       '<th>Group</th>',
       `<th class="spark">${active === 'sectors' ? '4 mo v SPY' : '4 mo v Sector'}</th>`,
-      `<th>Price<br><span class="small muted">${PRICE_PERIOD.toUpperCase()}</span></th>`,
+      '<th>Price</th>',
       '<th title="Δ C/D: fast composite minus slow composite (current half-life). Positive = strengthening; negative = fading.">Δ C/D</th>',
       '<th>Ticker</th>'
 ]
