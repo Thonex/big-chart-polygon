@@ -165,13 +165,6 @@ Fixed WTD showing up after Monday Morning market open
         <option>7</option><option>10</option><option>12</option><option>16</option>
       </select>
 
-      <select id="pricePeriod">
-        <option value="wtd">$% WTD</option>
-        <option value="1w">$% 1W</option>
-        <option value="1m">$% 1M</option>
-        <option value="3m">$% 3M</option>
-      </select>
-
       <button id="btnRefresh">Refresh</button>
     </div>
   </header>
@@ -1265,7 +1258,14 @@ function render(){
     const th = [
       '<th>Group</th>',
       `<th class="spark">${active === 'sectors' ? '4 mo v SPY' : '4 mo v Sector'}</th>`,
-      '<th>Price</th>',
+      `<th>
+        <select id="pricePeriodHeader">
+          <option value="wtd"${PRICE_PERIOD==='wtd'?' selected':''}>$% WTD</option>
+          <option value="1w"${PRICE_PERIOD==='1w'?' selected':''}>$% 1W</option>
+          <option value="1m"${PRICE_PERIOD==='1m'?' selected':''}>$% 1M</option>
+          <option value="3m"${PRICE_PERIOD==='3m'?' selected':''}>$% 3M</option>
+        </select>
+      </th>`,
       '<th title="Δ C/D: fast composite minus slow composite (current half-life). Positive = strengthening; negative = fading.">Δ C/D</th>',
       '<th>Ticker</th>'
 ]
@@ -1301,6 +1301,8 @@ function render(){
   // ✅ OUTSIDE the loop
   html += `</tbody></table>`;
   document.getElementById('tableWrap').innerHTML = html;
+  const p=document.getElementById('pricePeriodHeader');
+  if(p) p.onchange=()=>{ PRICE_PERIOD=p.value; localStorage.setItem(PRICE_KEY,PRICE_PERIOD); render(); };
   document.querySelectorAll('td[data-ticker]').forEach(td => {
     td.addEventListener('click', () => {
       const t = td.dataset.ticker;
