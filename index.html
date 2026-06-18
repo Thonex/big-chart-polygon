@@ -165,6 +165,26 @@ Fixed WTD showing up after Monday Morning market open
         <option>7</option><option>10</option><option>12</option><option>16</option>
       </select>
 
+      <label class="muted small">Price</label>
+
+      <select id="pricePeriod">
+
+        <option value="wtd">WTD</option>
+
+        <option value="1w">
+          1 Week
+        </option>
+
+        <option value="1m" selected>
+          1 Month
+        </option>
+
+        <option value="3m">
+          3 Month
+        </option>
+
+      </select>
+
       <button id="btnRefresh">Refresh</button>
     </div>
   </header>
@@ -202,6 +222,23 @@ const DATA_URL = {
 };
 /* ---------------- Persistence ---------------- */
 const MODE_KEY='heatmap_mode', N_KEY='heatmap_lookback_weeks', H_KEY='heatmap_half_life';
+
+// ---------------- Price column ----------------
+
+const PRICE_KEY = 'heatmap_price_period';
+
+let PRICE_PERIOD =
+  localStorage.getItem(PRICE_KEY)
+  || '1m';
+
+const PRICE_LOOKBACK = {
+
+  wtd : 0,
+  '1w': 1,
+  '1m': 4,
+  '3m': 12
+
+};
 
 /* ---------------- Labels ---------------- */
 const LABELS = {
@@ -296,6 +333,18 @@ const sortSel=document.getElementById('sortBy');
 const optAvg=document.getElementById('optAvg');
 const lookSel=document.getElementById('lookbackN');
 const halfSel=document.getElementById('halfLife');
+
+const priceSel =
+  document.getElementById(
+    'pricePeriod'
+  );
+
+if(priceSel){
+
+  priceSel.value =
+    PRICE_PERIOD;
+
+}
 
 if (lookSel) lookSel.value=String(LOOKBACK_N);
 if (halfSel) halfSel.value=String(HALF_LIFE);
@@ -393,6 +442,20 @@ sortSel.onchange=()=>render();
 lookSel.onchange=async()=>{ LOOKBACK_N=+lookSel.value; localStorage.setItem(N_KEY,LOOKBACK_N); updateAvgOptionLabel(); await loadActive(); };
 halfSel.onchange = async () => (HALF_LIFE = +halfSel.value, localStorage.setItem(H_KEY, HALF_LIFE), await loadActive());
 
+priceSel.onchange = ()=>{
+
+  PRICE_PERIOD =
+    priceSel.value;
+
+  localStorage.setItem(
+    PRICE_KEY,
+    PRICE_PERIOD
+  );
+
+  render();
+
+};
+
 /* Re‑percentile toggle pill */
 const pctToggle = document.createElement('button');
 pctToggle.textContent = RE_PERCENTILE_AFTER_BLEND ? 'Re-%: ON' : 'Re-%: OFF';
@@ -459,6 +522,69 @@ function fmt(val){
   return DISPLAY_DECIMALS === 0
     ? Math.round(val)
     : val.toFixed(DISPLAY_DECIMALS);
+}
+
+// ======================================================
+// Price Return
+//
+// Pure percentage change.
+//
+// Completely independent of:
+//
+// - CMF Raw / Smoothed
+// - Half-life
+// - EWMA
+// - Percentiles
+//
+// ======================================================
+
+function getPriceReturn(t){
+
+  const H=window._heat;
+  if(!H) return null;
+
+  const weeks=H.calcWeeks;
+  const wkMap=H.wkByT[t];
+
+  if(!wkMap || weeks.length<2)
+    return null;
+
+  const curWeek=weeks.at(-1);
+
+  const pastWeek=
+    PRICE_PERIOD==='wtd'
+      ? weeks.at(-2)
+      : weeks.at(-1-PRICE_LOOKBACK[PRICE_PERIOD]);
+
+  const cur=wkMap[curWeek]?.close;
+  const past=wkMap[pastWeek]?.close;
+
+  if(
+    !Number.isFinite(cur) ||
+    !Number.isFinite(past) ||
+    past<=0
+  )
+    return null;
+
+  return (cur/past-1)*100;
+}
+
+
+function renderPriceBar(ret){
+
+  if(ret==null) return '';
+
+  const color=ret>=0?'#24c35a':'#d94848';
+  const max={wtd:5,'1w':10,'1m':20,'3m':40}[PRICE_PERIOD];
+  const width=Math.min(100,Math.abs(ret)/max*100);
+
+  return `
+    <div style="width:100%;margin:auto;">
+      <div style="color:#c0c5cf;font-size:11px;font-weight:600;margin-bottom:2px;">
+        ${ret>0?'+':''}${ret.toFixed(1)}%
+      </div>
+      <div style="width:${width}%;height:13px;background:${color};border-radius:3px;"></div>
+    </div>`;
 }
 
 
@@ -1103,6 +1229,8 @@ function render(){
       return (a!=null&&b!=null)?(a-b):null; })();
     const wtdVal = (wtdPct?.map||{})[t];
 
+    const priceRet = getPriceReturn(t);
+
     // === Momentum meter data (CORRECT LOCATION) ===
     const fastSeries = wkArr.map(w => (H.compFast[t]||{})[w]);
     const slowSeries = wkArr.map(w => (H.compSlow[t]||{})[w]);
@@ -1134,7 +1262,7 @@ function render(){
       return (hit && Number.isFinite(hit.close)) ? hit.close : NaN;
     });
 
-    return { t,label,latestVal,avgN,mom4,wtdVal,sparkVals,spyVals,last5 };
+    return { t,label,priceRet,latestVal,avgN,mom4,wtdVal,sparkVals,spyVals,last5 };
   });
 
   rows.sort((A,B)=>{
@@ -1147,11 +1275,12 @@ function render(){
     }
   });
 
-  const th = [
-  '<th>Group</th>',
-  `<th class="spark">${active === 'sectors' ? '4 mo v SPY' : '4 mo v Sector'}</th>`,
-  '<th title="Δ C/D: fast composite minus slow composite (current half-life). Positive = strengthening; negative = fading.">Δ C/D</th>',
-  '<th>Ticker</th>'
+    const th = [
+      '<th>Group</th>',
+      `<th class="spark">${active === 'sectors' ? '4 mo v SPY' : '4 mo v Sector'}</th>`,
+      `<th>Price<br><span class="small muted">${PRICE_PERIOD.toUpperCase()}</span></th>`,
+      '<th title="Δ C/D: fast composite minus slow composite (current half-life). Positive = strengthening; negative = fading.">Δ C/D</th>',
+      '<th>Ticker</th>'
 ]
     .concat(wkArr.map(w=>`<th class="cell">${w.slice(5)}</th>`))
     .concat([
@@ -1167,6 +1296,7 @@ function render(){
     html += `<tr>
       <td class="label">${R.label}</td>
       <td class="spark">${sparklineSVG(R.sparkVals, R.spyVals)}</td>
+      <td>${renderPriceBar(R.priceRet)}</td>
       <td>${renderMeter(R.last5)}</td>
       <td data-ticker="${R.t}" title="Open 1Y chart (SMA 25 + MACD)\nYou must be logged into Google Finance">${R.t}</td>`;
 
