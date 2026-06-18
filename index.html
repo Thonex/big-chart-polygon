@@ -537,12 +537,11 @@ function getPriceReturn(t){
 }
 
 
-function renderPriceBar(ret){
+function renderPriceBar(ret, max){
 
   if(ret==null) return '';
 
   const color=ret>=0?'#24c35a':'#d94848';
-  const max={wtd:5,'1w':10,'1m':20,'3m':40}[PRICE_PERIOD];
   const width=Math.min(100,Math.abs(ret)/max*100);
 
   return `
@@ -1305,7 +1304,14 @@ function render(){
     });
 
     return { t,label,priceRet,latestVal,avgN,mom4,wtdVal,sparkVals,spyVals,last5 };
+
   });
+
+  const max = Math.max(
+    ...rows
+      .map(r => Math.abs(r.priceRet))
+      .filter(Number.isFinite)
+  );
 
   rows.sort((A,B)=>{
     switch(sortBy){
