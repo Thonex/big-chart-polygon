@@ -422,19 +422,6 @@ sortSel.onchange=()=>render();
 lookSel.onchange=async()=>{ LOOKBACK_N=+lookSel.value; localStorage.setItem(N_KEY,LOOKBACK_N); updateAvgOptionLabel(); await loadActive(); };
 halfSel.onchange = async () => (HALF_LIFE = +halfSel.value, localStorage.setItem(H_KEY, HALF_LIFE), await loadActive());
 
-priceSel.onchange = ()=>{
-
-  PRICE_PERIOD =
-    priceSel.value;
-
-  localStorage.setItem(
-    PRICE_KEY,
-    PRICE_PERIOD
-  );
-
-  render();
-
-};
 
 /* Re‑percentile toggle pill */
 const pctToggle = document.createElement('button');
@@ -1258,14 +1245,7 @@ function render(){
     const th = [
       '<th>Group</th>',
       `<th class="spark">${active === 'sectors' ? '4 mo v SPY' : '4 mo v Sector'}</th>`,
-      `<th>
-        <select id="pricePeriodHeader">
-          <option value="wtd"${PRICE_PERIOD==='wtd'?' selected':''}>$% WTD</option>
-          <option value="1w"${PRICE_PERIOD==='1w'?' selected':''}>$% 1W</option>
-          <option value="1m"${PRICE_PERIOD==='1m'?' selected':''}>$% 1M</option>
-          <option value="3m"${PRICE_PERIOD==='3m'?' selected':''}>$% 3M</option>
-        </select>
-      </th>`,
+      '<th id="priceHdr">Price</th>',
       '<th title="Δ C/D: fast composite minus slow composite (current half-life). Positive = strengthening; negative = fading.">Δ C/D</th>',
       '<th>Ticker</th>'
 ]
@@ -1301,8 +1281,11 @@ function render(){
   // ✅ OUTSIDE the loop
   html += `</tbody></table>`;
   document.getElementById('tableWrap').innerHTML = html;
+  const hdr=document.getElementById('priceHdr');
+  if(hdr) hdr.innerHTML=`<select id="pricePeriodHeader"><option value="wtd"${PRICE_PERIOD==='wtd'?' selected':''}>$% WTD</option><option value="1w"${PRICE_PERIOD==='1w'?' selected':''}>$% 1W</option><option value="1m"${PRICE_PERIOD==='1m'?' selected':''}>$% 1M</option><option value="3m"${PRICE_PERIOD==='3m'?' selected':''}>$% 3M</option></select>`;
   const p=document.getElementById('pricePeriodHeader');
   if(p) p.onchange=()=>{ PRICE_PERIOD=p.value; localStorage.setItem(PRICE_KEY,PRICE_PERIOD); render(); };
+
   document.querySelectorAll('td[data-ticker]').forEach(td => {
     td.addEventListener('click', () => {
       const t = td.dataset.ticker;
