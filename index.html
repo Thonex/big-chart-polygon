@@ -1,29 +1,3 @@
-<!--
-=====================================================================
- Big Charts V12 Commented
-
- Documentation / readability pass.
- Functional code intentionally unchanged.
- Existing comments preserved.
-
- Recent WTD fixes:
- - Historical week aggregation standardized on weekKeyNext().
- - Weekend behavior:
-     Mon-Fri : newest week is WTD only.
-     Sat-Sun : newest week becomes historical + WTD.
- - Suppress stale WTD if spreadsheet data is older than current week.
- - Composite now uses CMF only (BLEND_FLOW=1.0).
-=====================================================================
--->
-
-<!--
-Big Charts V12
-Working WTD
-Historical week fixed to use weekKeyNext()
-CMF mode WTD bug fixed 2026-06-14
-Removed Price from Composite calc. CMF = 1.0 (100%)
-Fixed WTD showing up after Monday Morning market open
--->
 <!doctype html>
 <html lang="en">
 <head>
@@ -124,8 +98,8 @@ Fixed WTD showing up after Monday Morning market open
       <span class="pill" id="pillIndustries">Industry Groups</span>
 
       <div class="row" title="Calculation engine">
-        <button id="modeV1">CMF Raw</button>
-        <button id="modeV2" class="active">CMF Smoothed</button>
+        <button id="modeV1">CMF only</button>
+        <button id="modeV2" class="active">Composite (Price+Flow)</button>
       </div>
 
       <div class="row">
@@ -143,12 +117,17 @@ Fixed WTD showing up after Monday Morning market open
         <span class="box g"></span> 80–99
         <span class="box y"></span> 60–79
         <span class="box r"></span> 0–59
+        <span class="wtdNote">
+        <input id="decimalsInput" type="number" min="0" max="2" step="1" value="0" style="width:36px; text-align:center; margin-right:6px;">
+        Decimals (0–2)
 
-        <label class="wtdNote" style="margin-left:18px;">
-          <input id="hoverFrame" type="checkbox">
-          Hover frame
-        </label>
-                  
+         
+         <label class="wtdNote" style="margin-left:18px;">
+            <input id="hoverFrame" type="checkbox" checked>
+            Hover frame
+          </label>
+          
+        </span>
       </div>
     </div>
 
@@ -183,15 +162,9 @@ Fixed WTD showing up after Monday Morning market open
 /* ---------------- Config toggles ---------------- */
 
 let DISPLAY_DECIMALS = 0; // 0 = integers, 1 = one decimal, 2 = two decimals, etc.
-// ========================================================
-// ============== Change Blend flow.
-// ============== BLEND_FLOW = 1.00 means no price weighting
-// ========================================================
-const BLEND_FLOW = 1.00;
-const BLEND_PRICE = 0;
-// ========================================================
-// ========================================================
-// ========================================================
+
+const BLEND_FLOW = 0.65;
+const BLEND_PRICE = 0.35;
 let RE_PERCENTILE_AFTER_BLEND = localStorage.getItem('rePctBlend') === 'true';
 
 /* ---------------- Data sources (CSV) ---------------- */
@@ -202,23 +175,6 @@ const DATA_URL = {
 };
 /* ---------------- Persistence ---------------- */
 const MODE_KEY='heatmap_mode', N_KEY='heatmap_lookback_weeks', H_KEY='heatmap_half_life';
-
-// ---------------- Price column ----------------
-
-const PRICE_KEY = 'heatmap_price_period';
-
-let PRICE_PERIOD =
-  localStorage.getItem(PRICE_KEY)
-  || '1m';
-
-const PRICE_LOOKBACK = {
-
-  wtd : 0,
-  '1w': 1,
-  '1m': 4,
-  '3m': 12
-
-};
 
 /* ---------------- Labels ---------------- */
 const LABELS = {
@@ -314,18 +270,6 @@ const optAvg=document.getElementById('optAvg');
 const lookSel=document.getElementById('lookbackN');
 const halfSel=document.getElementById('halfLife');
 
-const priceSel =
-  document.getElementById(
-    'pricePeriod'
-  );
-
-if(priceSel){
-
-  priceSel.value =
-    PRICE_PERIOD;
-
-}
-
 if (lookSel) lookSel.value=String(LOOKBACK_N);
 if (halfSel) halfSel.value=String(HALF_LIFE);
 
@@ -381,10 +325,6 @@ reflectMode();
 
 /* ---------------- Loading ---------------- */
 let isLoading=false;
-
-/* ------------------------------------------------------------------
-   Loads the currently selected dataset (Sectors or Industry Groups) and rebuilds the heatmap.
-------------------------------------------------------------------- */
 async function loadActive(){
   if (isLoading) return;
   isLoading = true;
@@ -398,10 +338,6 @@ async function loadActive(){
   }
 }
 
-
-/* ------------------------------------------------------------------
-   Switches between Sectors and Industry Groups and triggers a reload.
-------------------------------------------------------------------- */
 function setActive(which){
   active = which==='sectors' ? 'sectors' : 'industries';
   localStorage.setItem('heatmap_active',active);
@@ -422,7 +358,6 @@ sortSel.onchange=()=>render();
 lookSel.onchange=async()=>{ LOOKBACK_N=+lookSel.value; localStorage.setItem(N_KEY,LOOKBACK_N); updateAvgOptionLabel(); await loadActive(); };
 halfSel.onchange = async () => (HALF_LIFE = +halfSel.value, localStorage.setItem(H_KEY, HALF_LIFE), await loadActive());
 
-
 /* Re‑percentile toggle pill */
 const pctToggle = document.createElement('button');
 pctToggle.textContent = RE_PERCENTILE_AFTER_BLEND ? 'Re-%: ON' : 'Re-%: OFF';
@@ -435,10 +370,6 @@ pctToggle.onclick = () => {
 };
 document.querySelector('header .row:last-child').appendChild(pctToggle);
 
-
-/* ------------------------------------------------------------------
-   Builds the Google Finance URL for a ticker symbol.
-------------------------------------------------------------------- */
 function getFinanceLink(ticker){
 
   const FULL_MAP = {
@@ -480,10 +411,6 @@ function getFinanceLink(ticker){
   return `https://www.google.com/finance/beta/quote/${symbol}?window=1Y&indicator=SMA%3A25%3Aprice%2CMACD%3A5%3A10%3A9%3Aclose&type=candle`;
 }
   
-
-/* ------------------------------------------------------------------
-   Formats numbers according to the DISPLAY_DECIMALS setting.
-------------------------------------------------------------------- */
 function fmt(val){
   if (val == null) return '';
   return DISPLAY_DECIMALS === 0
@@ -491,127 +418,20 @@ function fmt(val){
     : val.toFixed(DISPLAY_DECIMALS);
 }
 
-// ======================================================
-// Price Return
-//
-// Pure percentage change.
-//
-// Completely independent of:
-//
-// - CMF Raw / Smoothed
-// - Half-life
-// - EWMA
-// - Percentiles
-//
-// ======================================================
-
-function getPriceReturn(t){
-
-  const H=window._heat;
-  if(!H) return null;
-
-  if(PRICE_PERIOD === 'wtd'){
-
-    const wtd = H.wtdByT?.[t];
-
-    if(
-      !wtd ||
-      !Number.isFinite(wtd.todayClose) ||
-      !Number.isFinite(wtd.prevFriClose) ||
-      wtd.prevFriClose <= 0
-    )
-      return null;
-
-    return (wtd.todayClose / wtd.prevFriClose - 1) * 100;
-  }
-
-  const weeks=H.calcWeeks;
-  const wkMap=H.wkByT[t];
-
-  if(!wkMap || weeks.length<2)
-    return null;
-
-  const curWeek=weeks.at(-1);
-
-  const pastWeek =
-    weeks.at(-1-PRICE_LOOKBACK[PRICE_PERIOD]);
-
-  const cur=wkMap[curWeek]?.close;
-  const past=wkMap[pastWeek]?.close;
-
-  if(
-    !Number.isFinite(cur) ||
-    !Number.isFinite(past) ||
-    past<=0
-  )
-    return null;
-
-  return (cur/past-1)*100;
-}
-
-
-function renderPriceBar(ret, max){
-
-  if(ret==null) return '';
-
-  const color=ret>=0?'#24c35a':'#d94848';
-  const width=Math.min(100,Math.abs(ret)/max*100);
-
-  return `
-    <div style="width:100%;margin:auto;">
-      <div style="color:#c0c5cf;font-size:11px;font-weight:600;margin-bottom:2px;">
-        ${ret>0?'+':''}${ret.toFixed(1)}%
-      </div>
-      <div style="width:${width}%;height:13px;background:${color};border-radius:3px;"></div>
-    </div>`;
-}
-
-
-/* ------------------------------------------------------------------
-   Updates the UI to reflect the active calculation mode.
-------------------------------------------------------------------- */
 function reflectMode(){ modeV1.classList.toggle('active',mode==='v1'); modeV2.classList.toggle('active',mode==='v2'); }
-
-/* ------------------------------------------------------------------
-   Updates the sort dropdown label to match the current lookback window.
-------------------------------------------------------------------- */
 function updateAvgOptionLabel(){ if (optAvg) optAvg.textContent=`${LOOKBACK_N}\u2011week avg (desc)`; }
-
-/* ------------------------------------------------------------------
-   Displays a temporary status message.
-------------------------------------------------------------------- */
 function flash(msg){ statusEl.textContent=msg; setTimeout(()=>statusEl.textContent='',3000); }
 
 /* ---------------- Date/Math helpers (unchanged) ---------------- */
-// function weekKeyPrev(dt){ const x=new Date(dt); const wd=x.getUTCDay(); const back=(wd-5+7)%7; x.setUTCDate(x.getUTCDate()-back); x.setUTCHours(0,0,0,0); return x.toISOString().slice(0,10); }
-
-/* ------------------------------------------------------------------
-   Converts a date into the Friday-ending trading week key.
-------------------------------------------------------------------- */
+function weekKeyPrev(dt){ const x=new Date(dt); const wd=x.getUTCDay(); const back=(wd-5+7)%7; x.setUTCDate(x.getUTCDate()-back); x.setUTCHours(0,0,0,0); return x.toISOString().slice(0,10); }
 function weekKeyNext(dt){ const x=new Date(dt); const wd=x.getUTCDay(); const fwd=(5-wd+7)%7; x.setUTCDate(x.getUTCDate()+fwd); x.setUTCHours(0,0,0,0); return x.toISOString().slice(0,10); }
-
-/* ------------------------------------------------------------------
-   Converts half-life into an EWMA decay constant.
-------------------------------------------------------------------- */
 function lambdaFromHalfLife(H){ return Math.pow(0.5, 1/Math.max(1e-9,H)); }
-
-/* ------------------------------------------------------------------
-   Restrains a value to a specified range.
-------------------------------------------------------------------- */
 function clamp(x,lo,hi){ return Math.max(lo,Math.min(hi,x)); }
-
-/* ------------------------------------------------------------------
-   Computes an exponentially weighted moving average.
-------------------------------------------------------------------- */
 function ewma(arr,lambda){ let s=null; const out={}; for(const {w,value} of arr){ const v=Number.isFinite(value)?value:null; if(v==null){ if(s!=null) out[w]=s; continue; } s=(s==null)?v:(lambda*s+(1-lambda)*v); out[w]=s; } return out; }
 
 /* ======================================================================
    Data build (unchanged except for status text)
 ====================================================================== */
-
-/* ------------------------------------------------------------------
-   Main pipeline: loads CSV, aggregates weekly data, computes percentiles and WTD.
-------------------------------------------------------------------- */
 async function buildHeatmap(url){
   try{
     const needsProxy = location.protocol === 'file:';
@@ -632,6 +452,11 @@ async function buildHeatmap(url){
     
     // (optional) shape rows to header length
     rows = rows.map(r => (r.length > header.length ? r.slice(0, header.length) : r));
+    
+    // DEBUG
+    //console.log('[heatmap] url:', url);
+    //console.log('[heatmap] header row:', header);
+    //console.log('[heatmap] first data row:', rows[0]);
     
     // Declare `need` ONCE and validate
     const need = ['date','ticker','open','high','low','close','volume'];
@@ -661,86 +486,34 @@ async function buildHeatmap(url){
     const wkByT = {}, wtdByT = {};
 
     // --------------------------------------------------------------------
-    // Find latest bar in spreadsheet
+    // Determine the CURRENT week from the latest bar actually present
+    // in the spreadsheet, NOT from the system clock.
+    // This handles holidays, delayed imports, weekends, and time zones.
     // --------------------------------------------------------------------
-    
+
     let latestBarDate = null;
-    
+
     for (const t in byT) {
-    
       const arr = byT[t];
-    
-      if (!arr || arr.length === 0)
-        continue;
-    
-      const lastBar = arr[arr.length - 1];
-    
-      if (
-          !latestBarDate ||
-          lastBar.d > latestBarDate
-      ){
+      if (!arr || arr.length === 0) continue;
+
+      const lastBar = arr[arr.length - 1]; // already sorted earlier
+
+      if (!latestBarDate || lastBar.d > latestBarDate) {
         latestBarDate = lastBar.d;
       }
     }
-    
-    // The most recent week represented in the data
+
     const curWeekKey = latestBarDate
       ? weekKeyNext(latestBarDate)
       : null;
-    
-    
-    // ====================================================
-    // Recent WTD fixes (June 2026)
-    //
-    // Prevent stale WTD values during weekdays.
-    // Allow completed weeks to appear historically on weekends.
-    // Historical and WTD weeks both use weekKeyNext().
-    // ====================================================
 
-// ----------------------------------------------------
-    // Weekend logic
-    //
-    // Mon-Fri  -> newest week = WTD only
-    // Sat-Sun  -> newest week = completed week
-    // ----------------------------------------------------
-    
-    const now = new Date();
-
-    const dow = now.getDay(); // Sun=0 ... Sat=6
-    
-    const showCompletedWeekInHistory =
-    
-         // Saturday
-         dow === 6
-    
-         // Sunday
-      || dow === 0
-    
-         // Monday before 10am Eastern
-      || (
-           dow === 1 &&
-           Number(
-             now.toLocaleString(
-               'en-US',
-               {
-                 timeZone:'America/New_York',
-                 hour:'numeric',
-                 hour12:false
-               }
-             )
-           ) < 10
-         );
-
-    const currentTradingWeek =
-      weekKeyNext(now);
-    
-    const suppressStaleWTD =
-    
-         dow >= 1      // Monday+
-    
-      && dow <= 5      // through Friday
-    
-      && curWeekKey !== currentTradingWeek;
+    console.log(
+      'WTD anchored to:',
+      latestBarDate?.toISOString().slice(0,10),
+      'week:',
+      curWeekKey
+    );
 
     for(const t in byT){
       const weekMap={};
@@ -758,87 +531,29 @@ async function buildHeatmap(url){
       };
 
       for(const bar of byT[t]){
-        const w = weekKeyNext(bar.d);
+        const wPrev=weekKeyPrev(bar.d);
+        const wNext=weekKeyNext(bar.d);
 
         let mfm=0;
         if(bar.h!==bar.l){ mfm=((bar.c-bar.l)-(bar.h-bar.c))/(bar.h-bar.l); mfm=clamp(mfm,-1,1); }
-
-        
-
         const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
-/*
-        // debug code
-        if (
-            (t === 'ESPO' || t === 'XLC') &&
-            w === curWeekKey
-        ){
 
-            console.log({
-
-                ticker : t,
-
-                date : bar.d.toISOString().slice(0,10),
-
-                open : bar.o,
-
-                high : bar.h,
-
-                low : bar.l,
-
-                close : bar.c,
-
-                volume : vol,
-
-                mfm : mfm,
-
-                mfv : mfm * vol
-
-            });
-
+        if(wNext===curWeekKey){
+          wtd.hasData=true;
+          if(vol>0){ wtd.mfvWTD += mfm*vol; wtd.volWTD += vol; }
+          wtd.todayClose = bar.c;
+          wtd.prevFriClose = acc.close ?? prevFriClose;
+          continue;
         }
-        // end of debug code
-*/
-       if (!suppressStaleWTD && w === curWeekKey){
 
-            wtd.hasData = true;
-        
-            if(vol > 0){
-              wtd.mfvWTD += mfm * vol;
-              wtd.volWTD += vol;
-            }
-        
-            wtd.todayClose = bar.c;
-            wtd.prevFriClose = acc.close ?? prevFriClose;
-        
-            // Mon-Fri:
-            // keep newest week OUT of historical
-            if (!showCompletedWeekInHistory)
-                continue;
-        
-            // Sat/Sun:
-            // fall through so it ALSO goes into historical
-        }
-        
-        
-        if (curW && w !== curW)
-            finalizeWeek();
-        
-        curW = w;
-        
-        if (vol > 0){
-            acc.mfv += mfm * vol;
-            acc.vol += vol;
-        }
-        
-        acc.close = bar.c;
-        
-        weeks.add(w);
-        
+        if(curW && wPrev!==curW) finalizeWeek();
+        curW=wPrev;
+        if(vol>0){ acc.mfv += mfm*vol; acc.vol += vol; }
+        acc.close=bar.c;
+        weeks.add(wPrev);
         wtd.prevFriClose = prevFriClose;
       }
       if(curW) finalizeWeek();
-
-     
       wkByT[t]=weekMap; wtdByT[t]=wtd;
     }
 
@@ -861,56 +576,12 @@ async function buildHeatmap(url){
     const compSlow = computeCompositePct(wkByT, calcWeeks, HALF_LIFE);
     const compFast = computeCompositePct(wkByT, calcWeeks, Math.max(1, HALF_LIFE - 2));
 
-
-
-
-/*
-    // ===== DEBUG WTD =====
-
-    console.table(
-
-      Object.entries(wtdByT)
-
-        .map(([industry, v]) => ({
-
-          industry,
-
-          cmf:
-
-            v.hasData &&
-
-            v.volWTD > 0
-
-              ? v.mfvWTD / v.volWTD
-
-              : null,
-
-          mfv: v.mfvWTD,
-
-          vol: v.volWTD,
-
-          prevFri: v.prevFriClose,
-
-          today: v.todayClose
-
-        }))
-
-        .filter(r => r.cmf != null)
-
-        .sort((a,b)=>b.cmf-a.cmf)
-
-    );
-*/
-    // ===== ACTUAL WTD RANKING =====
-   
+    // WTD snapshot
     const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
 
-    window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdByT, wtdPct };
-
-    
-    
+    window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdPct };
     render();
-    const modeLabel=(mode==='v2'?'CMF Smoothed':'CMF Raw');
+    const modeLabel=(mode==='v2'?'Composite (Price+Flow)':'CMF only');
     flash(`Loaded ${Object.keys(wkByT).length} tickers • ${displayWeeks.length} weeks • Mode: ${modeLabel} • WTD ready`);
   }catch(err){
     console.error(err); alert(err.message || 'Could not load/parse CSV');
@@ -919,10 +590,6 @@ async function buildHeatmap(url){
 
 /* Composite / WTD (unchanged maths) */
 
-
-/* ------------------------------------------------------------------
-   Recomputes historical composites after settings change.
-------------------------------------------------------------------- */
 function recomputeComposite(){
   const H = window._heat;
   if (!H) return;
@@ -931,10 +598,6 @@ function recomputeComposite(){
   H.compFast = computeCompositePct(H.wkByT, H.calcWeeks, Math.max(1, HALF_LIFE - 2));
 }
 
-
-/* ------------------------------------------------------------------
-   Builds smoothed historical CMF percentile rankings.
-------------------------------------------------------------------- */
 function computeCompositePct(wkByT, wkArr, halfLife){
   const λ = lambdaFromHalfLife(halfLife);
   const isFin=(x)=>Number.isFinite(x);
@@ -994,30 +657,12 @@ function computeCompositePct(wkByT, wkArr, halfLife){
   return out;
 }
 
-
-/* ------------------------------------------------------------------
-   Builds the current week WTD percentile rankings.
-------------------------------------------------------------------- */
 function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
   const isFin=(x)=>Number.isFinite(x);
   const flowNow={}, priceNow={};
 
-  function xsecOne(map){
-    const pair=[]; 
-    for(const t in map){ 
-      const v=map[t]; 
-      if(v!=null && Number.isFinite(v)) pair.push([t,v]); 
-    }
-    pair.sort((a,b)=>a[1]-b[1]); 
-    const n=pair.length; 
-    const out={};
-    for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
-    return out;
-  }
-
   for(const t in wkByT){
     const wtd=wtdByT[t]||{};
-
     if (wtd.hasData && isFin(wtd.mfvWTD) && isFin(wtd.volWTD)){
       const ratio =
         (wtd.volWTD && wtd.volWTD > 0)
@@ -1028,57 +673,30 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
         (ratio == null)
           ? null
           : Math.max(-1, Math.min(1, ratio));
-
       if (isFin(wtd.todayClose) && isFin(wtd.prevFriClose) && wtd.prevFriClose>0){
         priceNow[t]=Math.log(wtd.todayClose / wtd.prevFriClose);
-      } else {
-        priceNow[t]=null;
-      }
-
-    } else {
-      flowNow[t]=null;
-      priceNow[t]=null;
-    }
+      } else priceNow[t]=null;
+    } else { flowNow[t]=null; priceNow[t]=null; }
   }
 
-  const fPct = xsecOne(flowNow);
-
-  // CMF-only mode: WTD should be CMF percentile only
-  if (mode === 'v1') {
-    return { map: fPct };
+  function xsecOne(map){
+    const pair=[]; for(const t in map){ const v=map[t]; if(v!=null && Number.isFinite(v)) pair.push([t,v]); }
+    pair.sort((a,b)=>a[1]-b[1]); const n=pair.length; const out={};
+    for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
+    return out;
   }
+  const fPct = xsecOne(flowNow), pPct = xsecOne(priceNow);
 
-  const pPct = xsecOne(priceNow);
-
-  const blended={}; 
-  for(const t in wkByT){ 
-    const f=fPct[t], p=pPct[t]; 
-    if (f==null || p==null) continue; 
-    blended[t] = BLEND_FLOW*f + BLEND_PRICE*p; 
-  }
-
-  const pair=[]; 
-  for(const t in blended){ 
-    const v=blended[t]; 
-    if(v!=null && Number.isFinite(v)) pair.push([t,v]); 
-  }
-
-  pair.sort((a,b)=>a[1]-b[1]); 
-  const n=pair.length; 
-  const out={};
-
+  const blended={}; for(const t in wkByT){ const f=fPct[t], p=pPct[t]; if (f==null || p==null) continue; blended[t] = BLEND_FLOW*f + BLEND_PRICE*p; }
+  const pair=[]; for(const t in blended){ const v=blended[t]; if(v!=null && Number.isFinite(v)) pair.push([t,v]); }
+  pair.sort((a,b)=>a[1]-b[1]); const n=pair.length; const out={};
   for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
-
   return { map: out };
 }
 
 /* ======================================================================
    Rendering (+ sparklines)
 ====================================================================== */
-
-/* ------------------------------------------------------------------
-   Returns the displayed historical value for a ticker/week.
-------------------------------------------------------------------- */
 function getVal(t,w){
   const H = window._heat;
   if(!H) return null;
@@ -1090,20 +708,12 @@ function getVal(t,w){
     return (H.pctV1[t]||{})[w];
   }
 }
-
-/* ------------------------------------------------------------------
-   Returns the arithmetic mean of valid values.
-------------------------------------------------------------------- */
 function avg(arr){
   const f = arr.filter(v => v != null);
   return f.length > 0 ? (f.reduce((a,b)=>a+b,0) / f.length) : null;
 }
 
 // ===================== MOMENTUM METER =====================
-
-/* ------------------------------------------------------------------
-   Utility EWMA used by the momentum meter.
-------------------------------------------------------------------- */
 function ewmaFromArray(arr, halfLife) {
   const λ = Math.pow(0.5, 1 / halfLife);
   let s = null;
@@ -1116,10 +726,6 @@ function ewmaFromArray(arr, halfLife) {
 
 
 
-
-/* ------------------------------------------------------------------
-   Renders the MACD-style momentum meter.
-------------------------------------------------------------------- */
 function renderMeter(data) {
   if (!data || data.length === 0) return '';
 
@@ -1178,10 +784,6 @@ function renderMeter(data) {
 }
 
 /* sparkline mini SVG: last ~4 months of weekly closes */
-
-/* ------------------------------------------------------------------
-   Renders the comparative sparkline SVG.
-------------------------------------------------------------------- */
 function sparklineSVG(values, compareValues, w=72, h=18){
   const xs = values.filter(v => Number.isFinite(v));
   const ys = (compareValues||[]).filter(v => Number.isFinite(v));
@@ -1230,6 +832,9 @@ for (let i=0;i<n;i++){
 
   const lastIdx = valid[valid.length - 1][1];
 
+  //const lastX = sx(lastIdx);
+  //const lastY = sy(values[lastIdx]);
+
   return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
             <path class="lineCompare" d="${d2}"></path>
             <path class="lineMain" d="${d1}"></path>
@@ -1260,10 +865,6 @@ const INDUSTRY_BENCHMARK = {
   FUTY:'XLU', PHO:'XLU'
 };  
 
-
-/* ------------------------------------------------------------------
-   Renders the complete heatmap table and attaches events.
-------------------------------------------------------------------- */
 function render(){
   const H=window._heat; if(!H) return;
   const { displayWeeks, wkByT, wtdPct } = H;
@@ -1282,8 +883,6 @@ function render(){
       const a=getVal(t,wkArr[i]), b=(wkArr.length>4)?getVal(t,wkArr[j]):null;
       return (a!=null&&b!=null)?(a-b):null; })();
     const wtdVal = (wtdPct?.map||{})[t];
-
-    const priceRet = getPriceReturn(t);
 
     // === Momentum meter data (CORRECT LOCATION) ===
     const fastSeries = wkArr.map(w => (H.compFast[t]||{})[w]);
@@ -1310,63 +909,15 @@ function render(){
       active === 'sectors'
         ? 'SPY'
         : (INDUSTRY_BENCHMARK[t] || 'SPY');
-
-//debug code
-        if (benchmarkTicker === 'XLE') {
-
-          console.log('ticker:', t);
-
-          console.log(
-            'wkByT has XLE:',
-            !!wkByT['XLE']
-          );
-
-          console.log(
-            'weeks in XLE:',
-            Object.keys(wkByT['XLE'] || {})
-          );
-
-          console.log(
-            'display weeks:',
-            wkArr.slice(-SPARK_WEEKS)
-          );
-
-        }
-//end of debug code
     
     const spyVals = wkArr.slice(-SPARK_WEEKS).map(w=>{
       const hit=(wkByT[benchmarkTicker]||{})[w];
       return (hit && Number.isFinite(hit.close)) ? hit.close : NaN;
     });
-// console Debug
-    if (['XOP','OIH','FCG','TAN'].includes(t)) {
-      console.log(t);
-      console.log('benchmark:', benchmarkTicker);
-      console.log('main:', sparkVals);
-      console.log('bench:', spyVals);
-    }
-// end of console Debug
 
-    return { t,label,priceRet,latestVal,avgN,mom4,wtdVal,sparkVals,spyVals,last5 };
-
+    return { t,label,latestVal,avgN,mom4,wtdVal,sparkVals,spyVals,last5 };
   });
 
-  const max = Math.max(
-    ...rows
-      .map(r => Math.abs(r.priceRet))
-      .filter(Number.isFinite)
-  );
-/*
-  //debub
-
-  console.log(
-    "PRICE MAX:",
-    max,
-    rows.map(r => r.priceRet)
-  );
-
-  // end of debug
-*/
   rows.sort((A,B)=>{
     switch(sortBy){
       case 'group':  return (A.label||'').localeCompare(B.label||'')||A.t.localeCompare(B.t);
@@ -1377,20 +928,14 @@ function render(){
     }
   });
 
-    const th = [
-      '<th>Group</th>',
-      `<th class="spark">${active === 'sectors' ? '4 mo v SPY' : '4 mo v Sector'}</th>`,
-      '<th id="priceHdr">Price</th>',
-      '<th title="Δ C/D: fast composite minus slow composite (current half-life). Positive = strengthening; negative = fading.">Δ C/D</th>',
-      '<th>Ticker</th>'
+  const th = [
+  '<th>Group</th>',
+  `<th class="spark">${active === 'sectors' ? '4 mo v SPY' : '4 mo v Sector'}</th>`,
+  '<th title="Δ C/D: fast composite minus slow composite (current half-life). Positive = strengthening; negative = fading.">Δ C/D</th>',
+  '<th>Ticker</th>'
 ]
     .concat(wkArr.map(w=>`<th class="cell">${w.slice(5)}</th>`))
-    .concat([
-      `<th class="cell wtdCol"
-          title="Current week ranking based on week-to-date Money Flow and price action. Historical columns are smoothed weekly rankings. Refreshes Monday morning with the new trading week.">
-          WTD
-       </th>`
-    ]).join('');
+    .concat([`<th class="cell wtdCol">WTD</th>`]).join('');
 
   let html = `<table><thead><tr>${th}</tr></thead><tbody>`;
 
@@ -1398,7 +943,6 @@ function render(){
     html += `<tr>
       <td class="label">${R.label}</td>
       <td class="spark">${sparklineSVG(R.sparkVals, R.spyVals)}</td>
-      <td>${renderPriceBar(R.priceRet, max)}</td>
       <td>${renderMeter(R.last5)}</td>
       <td data-ticker="${R.t}" title="Open 1Y chart (SMA 25 + MACD)\nYou must be logged into Google Finance">${R.t}</td>`;
 
@@ -1416,11 +960,6 @@ function render(){
   // ✅ OUTSIDE the loop
   html += `</tbody></table>`;
   document.getElementById('tableWrap').innerHTML = html;
-  const hdr=document.getElementById('priceHdr');
-  if(hdr) hdr.innerHTML=`<select id="pricePeriodHeader"><option value="wtd"${PRICE_PERIOD==='wtd'?' selected':''}>$% WTD</option><option value="1w"${PRICE_PERIOD==='1w'?' selected':''}>$% 1W</option><option value="1m"${PRICE_PERIOD==='1m'?' selected':''}>$% 1M</option><option value="3m"${PRICE_PERIOD==='3m'?' selected':''}>$% 3M</option></select>`;
-  const p=document.getElementById('pricePeriodHeader');
-  if(p) p.onchange=()=>{ PRICE_PERIOD=p.value; localStorage.setItem(PRICE_KEY,PRICE_PERIOD); render(); };
-
   document.querySelectorAll('td[data-ticker]').forEach(td => {
     td.addEventListener('click', () => {
       const t = td.dataset.ticker;
