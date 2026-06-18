@@ -1315,6 +1315,14 @@ function render(){
       const hit=(wkByT[benchmarkTicker]||{})[w];
       return (hit && Number.isFinite(hit.close)) ? hit.close : NaN;
     });
+// console Debug
+    if (['XOP','OIH','FCG','TAN'].includes(t)) {
+      console.log(t);
+      console.log('benchmark:', benchmarkTicker);
+      console.log('main:', sparkVals);
+      console.log('bench:', spyVals);
+    }
+// end of console Debug
 
     return { t,label,priceRet,latestVal,avgN,mom4,wtdVal,sparkVals,spyVals,last5 };
 
