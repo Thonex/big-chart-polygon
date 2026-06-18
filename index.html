@@ -815,6 +815,47 @@ async function buildHeatmap(url){
     const compSlow = computeCompositePct(wkByT, calcWeeks, HALF_LIFE);
     const compFast = computeCompositePct(wkByT, calcWeeks, Math.max(1, HALF_LIFE - 2));
 
+    
+
+
+
+    // ===== DEBUG WTD =====
+
+    console.table(
+
+      Object.entries(wtdByT)
+
+        .map(([industry, v]) => ({
+
+          industry,
+
+          cmf:
+
+            v.hasData &&
+
+            v.volWTD > 0
+
+              ? v.mfvWTD / v.volWTD
+
+              : null,
+
+          mfv: v.mfvWTD,
+
+          vol: v.volWTD,
+
+          prevFri: v.prevFriClose,
+
+          today: v.todayClose
+
+        }))
+
+        .filter(r => r.cmf != null)
+
+        .sort((a,b)=>b.cmf-a.cmf)
+
+    );
+
+    // ===== ACTUAL WTD RANKING =====
    
     const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
 
