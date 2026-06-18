@@ -1313,6 +1313,16 @@ function render(){
       .filter(Number.isFinite)
   );
 
+  //debub
+
+  console.log(
+    "PRICE MAX:",
+    max,
+    rows.map(r => r.priceRet)
+  );
+
+  // end of debug
+
   rows.sort((A,B)=>{
     switch(sortBy){
       case 'group':  return (A.label||'').localeCompare(B.label||'')||A.t.localeCompare(B.t);
