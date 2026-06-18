@@ -1310,6 +1310,29 @@ function render(){
       active === 'sectors'
         ? 'SPY'
         : (INDUSTRY_BENCHMARK[t] || 'SPY');
+
+//debug code
+        if (benchmarkTicker === 'XLE') {
+
+          console.log('ticker:', t);
+
+          console.log(
+            'wkByT has XLE:',
+            !!wkByT['XLE']
+          );
+
+          console.log(
+            'weeks in XLE:',
+            Object.keys(wkByT['XLE'] || {})
+          );
+
+          console.log(
+            'display weeks:',
+            wkArr.slice(-SPARK_WEEKS)
+          );
+
+        }
+//end of debug code
     
     const spyVals = wkArr.slice(-SPARK_WEEKS).map(w=>{
       const hit=(wkByT[benchmarkTicker]||{})[w];
