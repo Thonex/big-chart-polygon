@@ -510,6 +510,21 @@ function getPriceReturn(t){
   const H=window._heat;
   if(!H) return null;
 
+  if(PRICE_PERIOD === 'wtd'){
+
+    const wtd = H.wtdByT?.[t];
+
+    if(
+      !wtd ||
+      !Number.isFinite(wtd.todayClose) ||
+      !Number.isFinite(wtd.prevFriClose) ||
+      wtd.prevFriClose <= 0
+    )
+      return null;
+
+    return (wtd.todayClose / wtd.prevFriClose - 1) * 100;
+  }
+
   const weeks=H.calcWeeks;
   const wkMap=H.wkByT[t];
 
@@ -518,10 +533,8 @@ function getPriceReturn(t){
 
   const curWeek=weeks.at(-1);
 
-  const pastWeek=
-    PRICE_PERIOD==='wtd'
-      ? weeks.at(-2)
-      : weeks.at(-1-PRICE_LOOKBACK[PRICE_PERIOD]);
+  const pastWeek =
+    weeks.at(-1-PRICE_LOOKBACK[PRICE_PERIOD]);
 
   const cur=wkMap[curWeek]?.close;
   const past=wkMap[pastWeek]?.close;
@@ -892,7 +905,7 @@ async function buildHeatmap(url){
    
     const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
 
-    window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdPct };
+    window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdByT, wtdPct };
 
     
     
