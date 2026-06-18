@@ -754,7 +754,7 @@ async function buildHeatmap(url){
         
 
         const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
-
+/*
         // debug code
         if (
             (t === 'ESPO' || t === 'XLC') &&
@@ -785,7 +785,7 @@ async function buildHeatmap(url){
 
         }
         // end of debug code
-
+*/
        if (!suppressStaleWTD && w === curWeekKey){
 
             wtd.hasData = true;
@@ -852,7 +852,7 @@ async function buildHeatmap(url){
 
 
 
-
+/*
     // ===== DEBUG WTD =====
 
     console.table(
@@ -888,7 +888,7 @@ async function buildHeatmap(url){
         .sort((a,b)=>b.cmf-a.cmf)
 
     );
-
+*/
     // ===== ACTUAL WTD RANKING =====
    
     const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
