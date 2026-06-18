@@ -68,21 +68,19 @@
       stroke-width: 1.25;
     }
 
-    /* ============= hover frame on rows =============== */
-    tbody tr {
-      position: relative;
+
+/*    td[data-ticker] {
+      color: #8ab4ff; 
+      font-weight: 600;
     }
-    
-    body.hoverFrame tbody tr:hover {
+*/
+    tbody tr:hover {
       background: rgba(255,255,255,0.03);
-    
-      box-shadow:
-        0 0 0 4px #3aa3ff,
-        0 0 10px rgba(58,163,255,.30);
-    
-      border-radius: 4px;
-    
-      z-index: 10;
+    }
+
+    td[data-ticker]:hover {
+      text-decoration: underline;
+      color: #a8c7ff;           /* lighter on hover */
     }
 
     /* Hide the Refresh button — pills do the loading now */
@@ -120,19 +118,12 @@
         <span class="wtdNote">
         <input id="decimalsInput" type="number" min="0" max="2" step="1" value="0" style="width:36px; text-align:center; margin-right:6px;">
         Decimals (0–2)
-
-         
-         <label class="wtdNote" style="margin-left:18px;">
-            <input id="hoverFrame" type="checkbox" checked>
-            Hover frame
-          </label>
-          
         </span>
       </div>
     </div>
 
     <div class="row">
-      <label class="muted small">Weeks</label>
+      <label class="muted small">Lookback</label>
       <select id="lookbackN">
         <option>2</option><option>4</option><option>8</option>
         <option>12</option><option selected>16</option><option>17</option>
@@ -168,7 +159,14 @@ const BLEND_PRICE = 0.35;
 let RE_PERCENTILE_AFTER_BLEND = localStorage.getItem('rePctBlend') === 'true';
 
 /* ---------------- Data sources (CSV) ---------------- */
-
+//const DATA_URL = {
+  // 11 SPDR sector ETFs (sheet tab “Sectors”)
+  //sectors: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwCu-AtG33jHIxKaVpP9kCCC3R_oQfvK6kumzG3WuUZGCwpSp1d1MoZxV3ESg7--NveInP2zEA2QVL/pub?gid=817118453&single=true&output=csv',
+  //sectors: 'https://docs.google.com/spreadsheets/d/1ekhMLJ2tdssEzEiy8JfodNrJg5FnfWqQjSwEQOeJyP0/gviz/tq?tqx=out:csv&sheet=DATA',
+  // Industry groups (sheet tab “Industry Groups”)
+  //industries: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwCu-AtG33jHIxKaVpP9kCCC3R_oQfvK6kumzG3WuUZGCwpSp1d1MoZxV3ESg7--NveInP2zEA2QVL/pub?gid=0&single=true&output=csv'
+  //industries: 'https://docs.google.com/spreadsheets/d/1ekhMLJ2tdssEzEiy8JfodNrJg5FnfWqQjSwEQOeJyP0/gviz/tq?tqx=out:csv&sheet=SECTORS'
+//};
 const DATA_URL = {
   sectors:    'https://docs.google.com/spreadsheets/d/1ekhMLJ2tdssEzEiy8JfodNrJg5FnfWqQjSwEQOeJyP0/gviz/tq?tqx=out:csv&sheet=SECTORS',
   industries: 'https://docs.google.com/spreadsheets/d/1ekhMLJ2tdssEzEiy8JfodNrJg5FnfWqQjSwEQOeJyP0/gviz/tq?tqx=out:csv&sheet=DATA'
@@ -288,38 +286,6 @@ if (decimalsInput){
   });
 }
 
-// ===== Hover Frame =====
-
-const hoverFrameCB = document.getElementById('hoverFrame');
-
-const hoverEnabled =
-  localStorage.getItem('hoverFrame') === 'true';
-
-if (hoverFrameCB) {
-
-  hoverFrameCB.checked = hoverEnabled;
-
-  hoverFrameCB.addEventListener('change', () => {
-    const enabled = hoverFrameCB.checked;
-
-    document.body.classList.toggle(
-      'hoverFrame',
-      enabled
-    );
-
-    localStorage.setItem(
-      'hoverFrame',
-      enabled
-    );
-  });
-
-}
-
-document.body.classList.toggle(
-  'hoverFrame',
-  hoverEnabled
-);
-  
 updateAvgOptionLabel();
 reflectMode();
 
@@ -482,38 +448,9 @@ async function buildHeatmap(url){
     for(const t in byT) byT[t].sort((a,b)=>a.d-b.d);
 
     // weekly aggregation + WTD partials
-    const weeks = new Set();
-    const wkByT = {}, wtdByT = {};
-
-    // --------------------------------------------------------------------
-    // Determine the CURRENT week from the latest bar actually present
-    // in the spreadsheet, NOT from the system clock.
-    // This handles holidays, delayed imports, weekends, and time zones.
-    // --------------------------------------------------------------------
-
-    let latestBarDate = null;
-
-    for (const t in byT) {
-      const arr = byT[t];
-      if (!arr || arr.length === 0) continue;
-
-      const lastBar = arr[arr.length - 1]; // already sorted earlier
-
-      if (!latestBarDate || lastBar.d > latestBarDate) {
-        latestBarDate = lastBar.d;
-      }
-    }
-
-    const curWeekKey = latestBarDate
-      ? weekKeyNext(latestBarDate)
-      : null;
-
-    console.log(
-      'WTD anchored to:',
-      latestBarDate?.toISOString().slice(0,10),
-      'week:',
-      curWeekKey
-    );
+    const weeks=new Set();
+    const wkByT={}, wtdByT={};
+    const today=new Date(), curWeekKey=weekKeyNext(today);
 
     for(const t in byT){
       const weekMap={};
@@ -532,39 +469,34 @@ async function buildHeatmap(url){
 
       for(const bar of byT[t]){
         const wPrev=weekKeyPrev(bar.d);
-        const wNext=weekKeyNext(bar.d);
+        if(curW && wPrev!==curW) finalizeWeek();
+        curW=wPrev;
 
         let mfm=0;
         if(bar.h!==bar.l){ mfm=((bar.c-bar.l)-(bar.h-bar.c))/(bar.h-bar.l); mfm=clamp(mfm,-1,1); }
         const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
+        if(vol>0){ acc.mfv += mfm*vol; acc.vol += vol; }
+        acc.close=bar.c;
+        weeks.add(wPrev);
 
+        const wNext=weekKeyNext(bar.d);
         if(wNext===curWeekKey){
           wtd.hasData=true;
           if(vol>0){ wtd.mfvWTD += mfm*vol; wtd.volWTD += vol; }
           wtd.todayClose = bar.c;
-          wtd.prevFriClose = acc.close ?? prevFriClose;
-          continue;
         }
-
-        if(curW && wPrev!==curW) finalizeWeek();
-        curW=wPrev;
-        if(vol>0){ acc.mfv += mfm*vol; acc.vol += vol; }
-        acc.close=bar.c;
-        weeks.add(wPrev);
-        wtd.prevFriClose = prevFriClose;
+        if(wPrev!==curWeekKey) wtd.prevFriClose = prevFriClose;
       }
       if(curW) finalizeWeek();
       wkByT[t]=weekMap; wtdByT[t]=wtd;
     }
 
-      const allWeeks = Array.from(weeks).sort();
-
-      const calcWeeks    = allWeeks;
-      const displayWeeks = allWeeks.slice(-Math.max(1, LOOKBACK_N));
+    const allWeeks=Array.from(weeks).sort();
+    const wkArr=allWeeks.slice(-Math.max(1,LOOKBACK_N));
 
     // CMF-only weekly percentiles
     const pctV1={};
-    for(const w of calcWeeks){
+    for(const w of wkArr){
       const pair=[];
       for(const t in wkByT){ const hit=wkByT[t][w]; if(hit && Number.isFinite(hit.cmf)) pair.push([t,hit.cmf]); }
       pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
@@ -573,16 +505,16 @@ async function buildHeatmap(url){
 
     // Composite (historical) 
     // Slow & Fast baseline (16/5, 12/3)
-    const compSlow = computeCompositePct(wkByT, calcWeeks, HALF_LIFE);
-    const compFast = computeCompositePct(wkByT, calcWeeks, Math.max(1, HALF_LIFE - 2));
+    const compSlow = computeCompositePct(wkByT, wkArr, HALF_LIFE);
+    const compFast = computeCompositePct(wkByT, wkArr, Math.max(1, HALF_LIFE - 2));
 
     // WTD snapshot
-    const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
+    const wtdPct = computeWTDPercentile(wkByT, wtdByT, wkArr, HALF_LIFE, weekKeyNext(new Date()));
 
-    window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdPct };
+    window._heat = {wkArr,pctV1,compSlow,compFast,wkByT,wtdPct};
     render();
     const modeLabel=(mode==='v2'?'Composite (Price+Flow)':'CMF only');
-    flash(`Loaded ${Object.keys(wkByT).length} tickers • ${displayWeeks.length} weeks • Mode: ${modeLabel} • WTD ready`);
+    flash(`Loaded ${Object.keys(wkByT).length} tickers • ${wkArr.length} weeks • Mode: ${modeLabel} • WTD ready`);
   }catch(err){
     console.error(err); alert(err.message || 'Could not load/parse CSV');
   }
@@ -594,8 +526,8 @@ function recomputeComposite(){
   const H = window._heat;
   if (!H) return;
 
-  H.compSlow = computeCompositePct(H.wkByT, H.calcWeeks, HALF_LIFE);
-  H.compFast = computeCompositePct(H.wkByT, H.calcWeeks, Math.max(1, HALF_LIFE - 2));
+  H.compSlow = computeCompositePct(H.wkByT, H.wkArr, HALF_LIFE);
+  H.compFast = computeCompositePct(H.wkByT, H.wkArr, Math.max(1, HALF_LIFE - 2));
 }
 
 function computeCompositePct(wkByT, wkArr, halfLife){
@@ -658,21 +590,23 @@ function computeCompositePct(wkByT, wkArr, halfLife){
 }
 
 function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
-  const isFin=(x)=>Number.isFinite(x);
+  const λ = lambdaFromHalfLife(halfLife), isFin=(x)=>Number.isFinite(x);
   const flowNow={}, priceNow={};
 
   for(const t in wkByT){
+    let sMFV=null, sVOL=null, lastFriClose=null;
+    for(const w of wkArr){
+      const h=wkByT[t][w]; if(!h) continue;
+      if(isFin(h.mfvW)&&isFin(h.volW)){ sMFV=(sMFV==null)?h.mfvW:(λ*sMFV+(1-λ)*h.mfvW);
+        sVOL=(sVOL==null)?h.volW:(λ*sVOL+(1-λ)*h.volW); }
+      lastFriClose=h.close ?? lastFriClose;
+    }
     const wtd=wtdByT[t]||{};
     if (wtd.hasData && isFin(wtd.mfvWTD) && isFin(wtd.volWTD)){
-      const ratio =
-        (wtd.volWTD && wtd.volWTD > 0)
-          ? (wtd.mfvWTD / wtd.volWTD)
-          : null;
-
-      flowNow[t] =
-        (ratio == null)
-          ? null
-          : Math.max(-1, Math.min(1, ratio));
+      const sMFV2=(sMFV==null)?wtd.mfvWTD:(λ*sMFV+(1-λ)*wtd.mfvWTD);
+      const sVOL2=(sVOL==null)?wtd.volWTD:(λ*sVOL+(1-λ)*wtd.volWTD);
+      const ratio=(sVOL2 && sVOL2>0) ? (sMFV2/sVOL2) : null;
+      flowNow[t]=(ratio==null)?null:Math.max(-1,Math.min(1,ratio));
       if (isFin(wtd.todayClose) && isFin(wtd.prevFriClose) && wtd.prevFriClose>0){
         priceNow[t]=Math.log(wtd.todayClose / wtd.prevFriClose);
       } else priceNow[t]=null;
@@ -867,8 +801,7 @@ const INDUSTRY_BENCHMARK = {
 
 function render(){
   const H=window._heat; if(!H) return;
-  const { displayWeeks, wkByT, wtdPct } = H;
-  const wkArr = displayWeeks;
+  const { wkArr, wkByT, wtdPct } = H;
   const names = Object.keys(wkByT).filter(t => active !== 'sectors' || t !== 'SPY');
   const latest=wkArr[wkArr.length-1];
   const SPARK_WEEKS = Math.min(17, wkArr.length); // ~4 months
