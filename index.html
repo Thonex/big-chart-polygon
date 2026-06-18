@@ -1354,7 +1354,7 @@ function render(){
     html += `<tr>
       <td class="label">${R.label}</td>
       <td class="spark">${sparklineSVG(R.sparkVals, R.spyVals)}</td>
-      <td>${renderPriceBar(R.priceRet)}</td>
+      <td>${renderPriceBar(R.priceRet, max)}</td>
       <td>${renderMeter(R.last5)}</td>
       <td data-ticker="${R.t}" title="Open 1Y chart (SMA 25 + MACD)\nYou must be logged into Google Finance">${R.t}</td>`;
 
