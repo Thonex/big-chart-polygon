@@ -1,18 +1,11 @@
 <!--
 =====================================================================
- Big Charts V12 Commented
+ Big Charts V15 Commented
 
- Documentation / readability pass.
- Functional code intentionally unchanged.
- Existing comments preserved.
+ XLE was missing from sparklines. Tool a long time to find that it
+ was missing from Google sheet scrub. 
 
- Recent WTD fixes:
- - Historical week aggregation standardized on weekKeyNext().
- - Weekend behavior:
-     Mon-Fri : newest week is WTD only.
-     Sat-Sun : newest week becomes historical + WTD.
- - Suppress stale WTD if spreadsheet data is older than current week.
- - Composite now uses CMF only (BLEND_FLOW=1.0).
+ Will update google sheet script. 
 =====================================================================
 -->
 
@@ -1310,7 +1303,7 @@ function render(){
       active === 'sectors'
         ? 'SPY'
         : (INDUSTRY_BENCHMARK[t] || 'SPY');
-
+/*
 //debug code
         if (benchmarkTicker === 'XLE') {
 
@@ -1333,11 +1326,12 @@ function render(){
 
         }
 //end of debug code
-    
+*/  
     const spyVals = wkArr.slice(-SPARK_WEEKS).map(w=>{
       const hit=(wkByT[benchmarkTicker]||{})[w];
       return (hit && Number.isFinite(hit.close)) ? hit.close : NaN;
     });
+/*    
 // console Debug
     if (['XOP','OIH','FCG','TAN'].includes(t)) {
       console.log(t);
@@ -1346,7 +1340,7 @@ function render(){
       console.log('bench:', spyVals);
     }
 // end of console Debug
-
+*/
     return { t,label,priceRet,latestVal,avgN,mom4,wtdVal,sparkVals,spyVals,last5 };
 
   });
@@ -1357,7 +1351,7 @@ function render(){
       .filter(Number.isFinite)
   );
 /*
-  //debub
+  //debug
 
   console.log(
     "PRICE MAX:",
