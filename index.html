@@ -751,6 +751,10 @@ async function buildHeatmap(url){
         let mfm=0;
         if(bar.h!==bar.l){ mfm=((bar.c-bar.l)-(bar.h-bar.c))/(bar.h-bar.l); mfm=clamp(mfm,-1,1); }
 
+        
+
+        const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
+
         // debug code
         if (
             (t === 'ESPO' || t === 'XLC') &&
@@ -781,8 +785,6 @@ async function buildHeatmap(url){
 
         }
         // end of debug code
-        
-        const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
 
        if (!suppressStaleWTD && w === curWeekKey){
 
