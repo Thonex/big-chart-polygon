@@ -750,6 +750,38 @@ async function buildHeatmap(url){
 
         let mfm=0;
         if(bar.h!==bar.l){ mfm=((bar.c-bar.l)-(bar.h-bar.c))/(bar.h-bar.l); mfm=clamp(mfm,-1,1); }
+
+        // debug code
+        if (
+            (t === 'ESPO' || t === 'XLC') &&
+            w === curWeekKey
+        ){
+
+            console.log({
+
+                ticker : t,
+
+                date : bar.d.toISOString().slice(0,10),
+
+                open : bar.o,
+
+                high : bar.h,
+
+                low : bar.l,
+
+                close : bar.c,
+
+                volume : vol,
+
+                mfm : mfm,
+
+                mfv : mfm * vol
+
+            });
+
+        }
+        // end of debug code
+        
         const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
 
        if (!suppressStaleWTD && w === curWeekKey){
@@ -815,7 +847,7 @@ async function buildHeatmap(url){
     const compSlow = computeCompositePct(wkByT, calcWeeks, HALF_LIFE);
     const compFast = computeCompositePct(wkByT, calcWeeks, Math.max(1, HALF_LIFE - 2));
 
-    
+
 
 
 
