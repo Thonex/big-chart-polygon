@@ -33,7 +33,7 @@ Fixed WTD showing up after Monday Morning market open
     .muted{color:var(--muted)}
     main{padding:16px}
     table{border-collapse:collapse;width:100%}
-    th,td{border:1px solid #1b2733;padding:4px 8px;text-align:center}
+    th,td{border:1px solid #1b2733;padding:6px 8px;text-align:center}
 
     tbody td {
       line-height: 1.2;
@@ -173,10 +173,32 @@ Fixed WTD showing up after Monday Morning market open
   </main>
 
 <script>
+/* ======================================================
+   BIG CHARTS STRUCTURED EDITION
+
+   1. CONSTANTS / SETTINGS / LOCAL STORAGE KEYS
+   2. LABELS AND MAPS
+   3. STATE + DOM REFERENCES
+   4. SMALL HELPER FUNCTIONS
+   5. DATA LOADING / CSV PARSING
+   6. WEEKLY BUCKET CONSTRUCTION
+   7. CMF / WTD / PERCENTILE CALCULATIONS
+   8. PRICE RETURN CALCULATIONS
+   9. RENDERING
+  10. EVENT LISTENERS
+  11. STARTUP
+
+   NOTE: Logic intentionally unchanged.
+====================================================== */
+
 /* ========================================================================
    Big Chart v22E — Percentile‑then‑Blend Composite
    (Math/logic unchanged)
   =======================================================================*/
+
+// ======================================================
+// 1. CONSTANTS / SETTINGS / LOCAL STORAGE KEYS
+// ======================================================
 
 /* ---------------- Config toggles ---------------- */
 
@@ -217,6 +239,10 @@ const PRICE_LOOKBACK = {
   '3m': 12
 
 };
+
+// ======================================================
+// 2. LABELS AND MAPS
+// ======================================================
 
 /* ---------------- Labels ---------------- */
 const LABELS = {
@@ -296,7 +322,11 @@ const LABELS = {
   }
 };
 
-/* ---------------- State & DOM ---------------- */
+// ======================================================
+// 3. STATE + DOM REFERENCES (Document Object Model)
+// ======================================================
+
+/* ---------------- State & DOM ( Document Object Model) ---------------- */
 let active = localStorage.getItem('heatmap_active') || 'industries';
 let mode   = localStorage.getItem(MODE_KEY) || 'v2';
 let LOOKBACK_N = +(localStorage.getItem(N_KEY) || 16);
@@ -377,6 +407,10 @@ document.body.classList.toggle(
   
 updateAvgOptionLabel();
 reflectMode();
+
+// ======================================================
+// 5. DATA LOADING / CSV PARSING
+// ======================================================
 
 /* ---------------- Loading ---------------- */
 let isLoading=false;
@@ -491,6 +525,10 @@ function fmt(val){
 }
 
 // ======================================================
+// 8. PRICE RETURN CALCULATIONS
+// ======================================================
+
+// ======================================================
 // Price Return
 //
 // Pure percentage change.
@@ -561,7 +599,7 @@ function renderPriceBar(ret, max){
       <div style="color:#c0c5cf;font-size:11px;font-weight:600;margin-bottom:2px;">
         ${ret>0?'+':''}${ret.toFixed(1)}%
       </div>
-      <div style="width:${width}%;height:8px;background:${color};border-radius:3px;"></div>
+      <div style="width:${width}%;height:11px;background:${color};border-radius:3px;"></div>
     </div>`;
 }
 
@@ -580,6 +618,10 @@ function updateAvgOptionLabel(){ if (optAvg) optAvg.textContent=`${LOOKBACK_N}\u
    Displays a temporary status message.
 ------------------------------------------------------------------- */
 function flash(msg){ statusEl.textContent=msg; setTimeout(()=>statusEl.textContent='',3000); }
+
+// ======================================================
+// 4. SMALL HELPER FUNCTIONS
+// ======================================================
 
 /* ---------------- Date/Math helpers (unchanged) ---------------- */
 // function weekKeyPrev(dt){ const x=new Date(dt); const wd=x.getUTCDay(); const back=(wd-5+7)%7; x.setUTCDate(x.getUTCDate()-back); x.setUTCHours(0,0,0,0); return x.toISOString().slice(0,10); }
@@ -916,6 +958,10 @@ async function buildHeatmap(url){
   }
 }
 
+// ======================================================
+// 7. CMF / WTD / PERCENTILE CALCULATIONS
+// ======================================================
+
 /* Composite / WTD (unchanged maths) */
 
 
@@ -1070,6 +1116,10 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
 
   return { map: out };
 }
+
+// ======================================================
+// 9. RENDERING
+// ======================================================
 
 /* ======================================================================
    Rendering (+ sparklines)
@@ -1428,6 +1478,15 @@ function render(){
     });
   });
   }
+// ======================================================
+// 10. EVENT LISTENERS
+// (inline onclick/onchange handlers above)
+// ======================================================
+
+// ======================================================
+// 11. STARTUP
+// ======================================================
+
 /* ---------------- Boot ---------------- */
 window.addEventListener('DOMContentLoaded', () => {
   try {
