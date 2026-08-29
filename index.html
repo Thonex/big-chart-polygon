@@ -696,6 +696,31 @@ function clamp(x,lo,hi){ return Math.max(lo,Math.min(hi,x)); }
 ------------------------------------------------------------------- */
 function ewma(arr,lambda){ let s=null; const out={}; for(const {w,value} of arr){ const v=Number.isFinite(value)?value:null; if(v==null){ if(s!=null) out[w]=s; continue; } s=(s==null)?v:(lambda*s+(1-lambda)*v); out[w]=s; } return out; }
 
+/* ------------------------------------------------------------------
+   Cross-sectional percentile ranking with proper tie handling.
+   Tied values get the SAME percentile (the average of the ranks
+   they'd occupy), instead of being arbitrarily split apart by
+   incidental sort/insertion order.
+------------------------------------------------------------------- */
+function rankPercentile_(pairs){
+  pairs.sort((a,b)=>a[1]-b[1]);
+  const n=pairs.length;
+  const out={};
+  if(n===0) return out;
+  if(n===1){ out[pairs[0][0]] = 50; return out; }
+  let i=0;
+  while(i<n){
+    let j=i;
+    while(j+1<n && pairs[j+1][1]===pairs[i][1]) j++;
+    let sum=0;
+    for(let k=i;k<=j;k++) sum += k*100/(n-1);
+    const avgPct = sum/(j-i+1);
+    for(let k=i;k<=j;k++) out[pairs[k][0]] = avgPct;
+    i=j+1;
+  }
+  return out;
+}
+
 /* ======================================================================
    Data build (unchanged except for status text)
 ====================================================================== */
@@ -948,8 +973,8 @@ async function buildHeatmap(url){
     for(const w of calcWeeks){
       const pair=[];
       for(const t in wkByT){ if(!isRankable_(t)) continue; const hit=wkByT[t][w]; if(hit && Number.isFinite(hit.cmf)) pair.push([t,hit.cmf]); }
-      pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
-      for(let i=0;i<n;i++) (pctV1[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
+      const ranked = rankPercentile_(pair);
+      for(const t in ranked) (pctV1[t] ||= {})[w] = ranked[t];
     }
 
     // Composite (historical) 
@@ -1065,8 +1090,8 @@ function computeCompositePct(wkByT, wkArr, halfLife){
     const out={};
     for(const w of wkArr){
       const pair=[]; for(const t in map){ if(!isRankable_(t)) continue; const v=map[t][w]; if(v!=null && isFin(v)) pair.push([t,v]); }
-      pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
-      for(let i=0;i<n;i++) (out[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
+      const ranked = rankPercentile_(pair);
+      for(const t in ranked) (out[t] ||= {})[w] = ranked[t];
     }
     return out;
   }
@@ -1088,8 +1113,8 @@ function computeCompositePct(wkByT, wkArr, halfLife){
   const out={};
   for(const w of wkArr){
     const pair=[]; for(const t in blendedPct){ if(!isRankable_(t)) continue; const v=blendedPct[t][w]; if(v!=null && isFin(v)) pair.push([t,v]); }
-    pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
-    for(let i=0;i<n;i++) (out[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
+    const ranked = rankPercentile_(pair);
+    for(const t in ranked) (out[t] ||= {})[w] = ranked[t];
   }
   return out;
 }
@@ -1116,11 +1141,7 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
       const v=map[t];
       if(v!=null && Number.isFinite(v)) pair.push([t,v]);
     }
-    pair.sort((a,b)=>a[1]-b[1]);
-    const n=pair.length;
-    const out={};
-    for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
-    return out;
+    return rankPercentile_(pair);
   }
 
   for(const t in wkByT){
