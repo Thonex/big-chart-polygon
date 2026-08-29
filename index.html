@@ -233,9 +233,11 @@ let RE_PERCENTILE_AFTER_BLEND = localStorage.getItem('rePctBlend') === 'true';
    SECTOR_TICKERS in the scrubber, so a separate SECTORS tab/fetch was a
    redundant second pull of the same data. Both views now read the one DATA
    tab; which rows count as "Sectors" vs "Industry Groups" — and which
-   tickers rank against which peers — is decided client-side in
-   buildHeatmap() via tickerAllowedForActiveView_(). See that function for
-   why SPY is kept in the Sectors ranking pool but excluded from Industries.
+   tickers are even eligible to be ranked — is decided client-side in
+   buildHeatmap() via tickerAllowedForActiveView_() and isRankable_(). SPY is
+   loaded into both views' datasets (for the sparkline benchmark) but is
+   never allowed to compete for a percentile rank in either one — see
+   isRankable_() below for why.
 ------------------------------------------------------------------------ */
 
 const DATA_URL = 'https://docs.google.com/spreadsheets/d/1ekhMLJ2tdssEzEiy8JfodNrJg5FnfWqQjSwEQOeJyP0/gviz/tq?tqx=out:csv&sheet=DATA';
