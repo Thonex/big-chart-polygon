@@ -846,7 +846,7 @@ async function buildHeatmap(url){
       const wtd={ hasData:false, mfvWTD:0, volWTD:0, todayClose:null, prevFriClose:null };
 
       const finalizeWeek=()=>{
-        const cmf= acc.vol>0 ? (acc.mfv/acc.vol) : 0;
+        const cmf= acc.vol>0 ? (acc.mfv/acc.vol) : null;
         const retLog=(prevFriClose!=null && acc.close!=null && prevFriClose>0 && acc.close>0) ? Math.log(acc.close/prevFriClose) : 0;
         weekMap[curW]={ cmf, retLog, mfvW:acc.mfv||0, volW:acc.vol||0, close:acc.close };
         prevFriClose=acc.close;
