@@ -1144,37 +1144,6 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
   return { map: xsecOne(flowNow) };
 }
 
-  const fPct = xsecOne(flowNow);
-
-  // CMF-only mode: WTD should be CMF percentile only
-  if (mode === 'v1') {
-    return { map: fPct };
-  }
-
-  const pPct = xsecOne(priceNow);
-
-  const blended={}; 
-  for(const t in wkByT){ 
-    const f=fPct[t], p=pPct[t]; 
-    if (f==null || p==null) continue; 
-    blended[t] = BLEND_FLOW*f + BLEND_PRICE*p; 
-  }
-
-  const pair=[]; 
-  for(const t in blended){ 
-    const v=blended[t]; 
-    if(v!=null && Number.isFinite(v)) pair.push([t,v]); 
-  }
-
-  pair.sort((a,b)=>a[1]-b[1]); 
-  const n=pair.length; 
-  const out={};
-
-  for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
-
-  return { map: out };
-}
-
 // ======================================================
 // 9. RENDERING
 // ======================================================
