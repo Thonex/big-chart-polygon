@@ -1098,9 +1098,16 @@ function computeCompositePct(wkByT, wkArr, halfLife){
 /* ------------------------------------------------------------------
    Builds the current week WTD percentile rankings.
 ------------------------------------------------------------------- */
+/* ------------------------------------------------------------------
+   Builds the current week WTD percentile rankings.
+   WTD is a pure function of this week's money flow so far — it never
+   depends on price or on any prior week's close. (BLEND_PRICE is 0 in
+   the historical composite too, but WTD no longer even computes a
+   price percentile, so there's nothing left that could gate on it.)
+------------------------------------------------------------------- */
 function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
   const isFin=(x)=>Number.isFinite(x);
-  const flowNow={}, priceNow={};
+  const flowNow={};
 
   function xsecOne(map){
     const pair=[];
@@ -1110,7 +1117,7 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
       if(v!=null && Number.isFinite(v)) pair.push([t,v]);
     }
     pair.sort((a,b)=>a[1]-b[1]);
-    const n=pair.length; 
+    const n=pair.length;
     const out={};
     for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
     return out;
@@ -1129,18 +1136,13 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
         (ratio == null)
           ? null
           : Math.max(-1, Math.min(1, ratio));
-
-      if (isFin(wtd.todayClose) && isFin(wtd.prevFriClose) && wtd.prevFriClose>0){
-        priceNow[t]=Math.log(wtd.todayClose / wtd.prevFriClose);
-      } else {
-        priceNow[t]=null;
-      }
-
     } else {
       flowNow[t]=null;
-      priceNow[t]=null;
     }
   }
+
+  return { map: xsecOne(flowNow) };
+}
 
   const fPct = xsecOne(flowNow);
 
