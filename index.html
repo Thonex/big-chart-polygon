@@ -345,20 +345,29 @@ const LABELS = {
    Which tickers belong to which view now that both views share one
    fetch. The 11 broad sector ETFs are exactly the keys of LABELS.sectors.
 
-   SPY is a benchmark, never its own row (that's still handled separately
-   in render()) — but it DOES need to participate in the Sectors ranking
-   pool, because the old dedicated SECTORS tab always fetched it alongside
-   the 11 sector ETFs, so historical Sectors percentiles were computed
-   against a 12-way field (11 sectors + SPY). Excluding it now would quietly
-   shift every Sectors percentile. Under Industry Groups, SPY never used to
-   be part of that fetch at all, so it's excluded there — both because that
-   matches existing numbers and because ranking a benchmark against
-   industry-group ETFs doesn't mean anything.
+   SPY is a pure benchmark — the guide is explicit that comparison lines
+   should never alter the heat-map ranking. So SPY is loaded into wkByT for
+   BOTH views (it needs to be there so the sparkline lookups — 'SPY' itself
+   under Sectors, and the INDUSTRY_BENCHMARK fallback for "Broad" tickers
+   under Industry Groups — have real weekly close data to draw from), but it
+   is never treated as a row (see the `names` filter in render()) and never
+   allowed to compete in the percentile/ranking math (see isRankable_ and
+   every xsec/xsecOne call site below). Previously SPY quietly sat inside
+   the Sectors ranking pool as a 12th competitor — that was a bug relative
+   to the guide's own stated intent, not a design choice, so this pass
+   corrects it rather than preserving it.
 ------------------------------------------------------------------- */
 const SECTOR_TICKER_SET = new Set(Object.keys(LABELS.sectors));
 
 function tickerAllowedForActiveView_(t){
+  // View scope: which tickers even belong in this view's dataset at all.
   if (active === 'sectors') return SECTOR_TICKER_SET.has(t) || t === 'SPY';
+  return true; // industries: everything in DATA, including SPY (benchmark-only — see isRankable_)
+}
+
+// Ranking eligibility: SPY is data we keep around for sparklines, but it
+// never gets to compete for a percentile rank in either view.
+function isRankable_(t){
   return t !== 'SPY';
 }
 
@@ -936,7 +945,7 @@ async function buildHeatmap(url){
     const pctV1={};
     for(const w of calcWeeks){
       const pair=[];
-      for(const t in wkByT){ const hit=wkByT[t][w]; if(hit && Number.isFinite(hit.cmf)) pair.push([t,hit.cmf]); }
+      for(const t in wkByT){ if(!isRankable_(t)) continue; const hit=wkByT[t][w]; if(hit && Number.isFinite(hit.cmf)) pair.push([t,hit.cmf]); }
       pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
       for(let i=0;i<n;i++) (pctV1[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
     }
@@ -1053,7 +1062,7 @@ function computeCompositePct(wkByT, wkArr, halfLife){
   function xsec(map){
     const out={};
     for(const w of wkArr){
-      const pair=[]; for(const t in map){ const v=map[t][w]; if(v!=null && isFin(v)) pair.push([t,v]); }
+      const pair=[]; for(const t in map){ if(!isRankable_(t)) continue; const v=map[t][w]; if(v!=null && isFin(v)) pair.push([t,v]); }
       pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
       for(let i=0;i<n;i++) (out[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
     }
@@ -1076,7 +1085,7 @@ function computeCompositePct(wkByT, wkArr, halfLife){
   }
   const out={};
   for(const w of wkArr){
-    const pair=[]; for(const t in blendedPct){ const v=blendedPct[t][w]; if(v!=null && isFin(v)) pair.push([t,v]); }
+    const pair=[]; for(const t in blendedPct){ if(!isRankable_(t)) continue; const v=blendedPct[t][w]; if(v!=null && isFin(v)) pair.push([t,v]); }
     pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
     for(let i=0;i<n;i++) (out[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
   }
@@ -1092,12 +1101,13 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
   const flowNow={}, priceNow={};
 
   function xsecOne(map){
-    const pair=[]; 
-    for(const t in map){ 
-      const v=map[t]; 
-      if(v!=null && Number.isFinite(v)) pair.push([t,v]); 
+    const pair=[];
+    for(const t in map){
+      if(!isRankable_(t)) continue;
+      const v=map[t];
+      if(v!=null && Number.isFinite(v)) pair.push([t,v]);
     }
-    pair.sort((a,b)=>a[1]-b[1]); 
+    pair.sort((a,b)=>a[1]-b[1]);
     const n=pair.length; 
     const out={};
     for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
