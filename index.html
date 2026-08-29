@@ -1,11 +1,24 @@
 <!--
 =====================================================================
+ Big Charts — dedupe pass (2026-08-29)
+
+ The SECTORS tab is deprecated (removed from the Google Sheets scrubber).
+ Both the Sectors and Industry Groups pills now fetch the one DATA tab.
+ SPY was added to the scrubber's DATA output specifically so this still
+ works. See DATA_URL, tickerAllowedForActiveView_(), and the names filter
+ in render() for how the two views now separate their ticker universes
+ client-side instead of relying on two different sheet tabs.
+=====================================================================
+-->
+
+<!--
+=====================================================================
  Big Charts V16 Commented
 
  XLE was missing from sparklines. Tool a long time to find that it
- was missing from Google sheet scrub. 
+ was missing from Google sheet scrub.
 
- Will update google sheet script. 
+ Will update google sheet script.
 =====================================================================
 -->
 
@@ -214,12 +227,18 @@ const BLEND_PRICE = 0;
 // ========================================================
 let RE_PERCENTILE_AFTER_BLEND = localStorage.getItem('rePctBlend') === 'true';
 
-/* ---------------- Data sources (CSV) ---------------- */
+/* ---------------- Data source (CSV) ----------------
+   The SECTORS tab has been deprecated on the Google Sheets side — the 11
+   broad sector ETFs (+ SPY) were already being fetched daily as part of
+   SECTOR_TICKERS in the scrubber, so a separate SECTORS tab/fetch was a
+   redundant second pull of the same data. Both views now read the one DATA
+   tab; which rows count as "Sectors" vs "Industry Groups" — and which
+   tickers rank against which peers — is decided client-side in
+   buildHeatmap() via tickerAllowedForActiveView_(). See that function for
+   why SPY is kept in the Sectors ranking pool but excluded from Industries.
+------------------------------------------------------------------------ */
 
-const DATA_URL = {
-  sectors:    'https://docs.google.com/spreadsheets/d/1ekhMLJ2tdssEzEiy8JfodNrJg5FnfWqQjSwEQOeJyP0/gviz/tq?tqx=out:csv&sheet=SECTORS',
-  industries: 'https://docs.google.com/spreadsheets/d/1ekhMLJ2tdssEzEiy8JfodNrJg5FnfWqQjSwEQOeJyP0/gviz/tq?tqx=out:csv&sheet=DATA'
-};
+const DATA_URL = 'https://docs.google.com/spreadsheets/d/1ekhMLJ2tdssEzEiy8JfodNrJg5FnfWqQjSwEQOeJyP0/gviz/tq?tqx=out:csv&sheet=DATA';
 /* ---------------- Persistence ---------------- */
 const MODE_KEY='heatmap_mode', N_KEY='heatmap_lookback_weeks', H_KEY='heatmap_half_life';
 
@@ -322,6 +341,27 @@ const LABELS = {
   }
 };
 
+/* ------------------------------------------------------------------
+   Which tickers belong to which view now that both views share one
+   fetch. The 11 broad sector ETFs are exactly the keys of LABELS.sectors.
+
+   SPY is a benchmark, never its own row (that's still handled separately
+   in render()) — but it DOES need to participate in the Sectors ranking
+   pool, because the old dedicated SECTORS tab always fetched it alongside
+   the 11 sector ETFs, so historical Sectors percentiles were computed
+   against a 12-way field (11 sectors + SPY). Excluding it now would quietly
+   shift every Sectors percentile. Under Industry Groups, SPY never used to
+   be part of that fetch at all, so it's excluded there — both because that
+   matches existing numbers and because ranking a benchmark against
+   industry-group ETFs doesn't mean anything.
+------------------------------------------------------------------- */
+const SECTOR_TICKER_SET = new Set(Object.keys(LABELS.sectors));
+
+function tickerAllowedForActiveView_(t){
+  if (active === 'sectors') return SECTOR_TICKER_SET.has(t) || t === 'SPY';
+  return t !== 'SPY';
+}
+
 // ======================================================
 // 3. STATE + DOM REFERENCES (Document Object Model)
 // ======================================================
@@ -423,8 +463,7 @@ async function loadActive(){
   isLoading = true;
   try{
     statusEl.textContent = `Loading ${active}…`;
-    const url=DATA_URL[active]; if(!url){ alert(`No URL configured for ${active}`); return; }
-    await buildHeatmap(url);
+    await buildHeatmap(DATA_URL);
   } finally {
     isLoading=false;
     statusEl.textContent='';
@@ -686,6 +725,10 @@ async function buildHeatmap(url){
 
 
     // daily → per-ticker arrays
+    // Filtered to the active view's ticker set here, at the source, so every
+    // downstream percentile/ranking calc (which just loops "for t in wkByT")
+    // is automatically scoped to the right peer group — no changes needed
+    // anywhere else in the ranking math.
     const byT={};
     for(const r of rows){
       const t=(r[idx.ticker]||'').toUpperCase();
@@ -693,6 +736,7 @@ async function buildHeatmap(url){
       const o=+r[idx.open], h=+r[idx.high], l=+r[idx.low], c=+r[idx.close], v=+r[idx.volume];
       if(!t || !Number.isFinite(c)||!Number.isFinite(h)||!Number.isFinite(l)||!Number.isFinite(v)) continue;
       if(h<l) continue;
+      if(!tickerAllowedForActiveView_(t)) continue;
       (byT[t] ||= []).push({d,o,h,l,c,v});
     }
     for(const t in byT) byT[t].sort((a,b)=>a.d-b.d);
@@ -1317,7 +1361,9 @@ function render(){
   const H=window._heat; if(!H) return;
   const { displayWeeks, wkByT, wtdPct } = H;
   const wkArr = displayWeeks;
-  const names = Object.keys(wkByT).filter(t => active !== 'sectors' || t !== 'SPY');
+  // SPY only ever reaches wkByT to serve as a ranking peer in the Sectors
+  // view (see tickerAllowedForActiveView_) — it's never displayed as a row.
+  const names = Object.keys(wkByT).filter(t => t !== 'SPY');
   const latest=wkArr[wkArr.length-1];
   const SPARK_WEEKS = Math.min(17, wkArr.length); // ~4 months
   const sortBy=(sortSel?.value)||'ticker';
