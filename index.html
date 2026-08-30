@@ -43,6 +43,27 @@ Fixed WTD showing up after Monday Morning market open
  this only touches how a percentile value is painted.
 =====================================================================
 -->
+
+<!--
+=====================================================================
+ Big Charts V24 (2026-08-30)
+
+ Added 5 new Industry Groups tickers fetched by the scrubber's new Batch F:
+ BOTZ (Info Tech – Robotics & AI), URA (Energy – Uranium & Nuclear),
+ GRID (Utilities – Grid Infrastructure), COPX (Materials – Copper Miners),
+ SHLD (Industrials – Defense Tech). Added to LABELS.industries,
+ INDUSTRY_BENCHMARK (mapped to each one's sector-broad ETF for the
+ sparkline comparison line), and getFinanceLink's FULL_MAP (exchange
+ suffixes: BOTZ/GRID on NASDAQ, URA/COPX/SHLD on NYSEARCA). None of these
+ are sector-broad ETFs, so tickerAllowedForActiveView_() automatically
+ keeps them out of the Sectors view (they're not keys of LABELS.sectors)
+ and they show up only in Industry Groups, same as every other non-XL*
+ ticker. URA's sector bucket (Energy vs Materials) is a judgment call —
+ uranium mining is classified inconsistently across providers; placed
+ under Energy here since the demand story (nuclear power generation) is
+ energy-side. Easy to move to Materials (XLB) later if preferred.
+=====================================================================
+-->
 <!doctype html>
 <html lang="en">
 <head>
@@ -297,6 +318,7 @@ const LABELS = {
     OIH:'Energy – Oil Services',
     FCG:'Energy – Natural Gas',
     TAN:'Energy – Solar',
+    URA:'Energy – Uranium & Nuclear',
 
     // Materials
     XME:'Materials – Metals & Mining',
@@ -304,6 +326,7 @@ const LABELS = {
     GDX:'Materials – Gold Miners',
     SLX:'Materials – Steel',
     PICK:'Materials – Metals & Mining (global)',
+    COPX:'Materials – Copper Miners',
 
     // Industrials
     ITA:'Industrials – Aerospace & Defense',
@@ -313,6 +336,7 @@ const LABELS = {
     JETS:'Industrials – Airlines',
     SEA:'Industrials – Shipping',
     VIS:'Industrials – Broad (alt)',
+    SHLD:'Industrials – Defense Tech',
 
     // Consumer Discretionary
     ITB:'Consumer Disc. – Home Construction',
@@ -353,6 +377,7 @@ const LABELS = {
     FDN:'Information Tech – Internet',
     CIBR:'Information Tech – Cybersecurity',
     XLK:'Information Tech – Broad',
+    BOTZ:'Information Tech – Robotics & AI',
 
     // Communication Services
     XLC:'Communication Services – Broad',
@@ -361,7 +386,8 @@ const LABELS = {
     // Utilities
     XLU:'Utilities – Broad',
     FUTY:'Utilities – Broad (alt)',
-    PHO:'Utilities – Water'
+    PHO:'Utilities – Water',
+    GRID:'Utilities – Grid Infrastructure'
   }
 };
 
@@ -595,7 +621,11 @@ function getFinanceLink(ticker){
     VNQ:'VNQ:NYSEARCA', IYR:'IYR:NYSEARCA',
     SOXX:'SOXX:NASDAQ', FDN:'FDN:NYSEARCA', CIBR:'CIBR:NASDAQ',
     VOX:'VOX:NYSEARCA',
-    FUTY:'FUTY:NYSEARCA'
+    FUTY:'FUTY:NYSEARCA',
+
+    // V24 additions (Batch F tickers)
+    BOTZ:'BOTZ:NASDAQ', URA:'URA:NYSEARCA', GRID:'GRID:NASDAQ',
+    COPX:'COPX:NYSEARCA', SHLD:'SHLD:NYSEARCA'
   };
 
   const DEFAULT_EXCHANGE = 'NASDAQ';
@@ -1513,11 +1543,11 @@ for (let i=0;i<n;i++){
   }
 
 const INDUSTRY_BENCHMARK = {
-  XOP:'XLE', OIH:'XLE', FCG:'XLE', TAN:'XLE',
+  XOP:'XLE', OIH:'XLE', FCG:'XLE', TAN:'XLE', URA:'XLE',
 
-  XME:'XLB', GDX:'XLB', SLX:'XLB', PICK:'XLB',
+  XME:'XLB', GDX:'XLB', SLX:'XLB', PICK:'XLB', COPX:'XLB',
 
-  ITA:'XLI', IYT:'XLI', PAVE:'XLI', JETS:'XLI', SEA:'XLI', VIS:'XLI',
+  ITA:'XLI', IYT:'XLI', PAVE:'XLI', JETS:'XLI', SEA:'XLI', VIS:'XLI', SHLD:'XLI',
 
   ITB:'XLY', AUTO:'XLY', XRT:'XLY', XHB:'XLY', ESPO:'XLY',
 
@@ -1529,11 +1559,11 @@ const INDUSTRY_BENCHMARK = {
 
   VNQ:'XLRE', IYR:'XLRE', REM:'XLRE',
 
-  SOXX:'XLK', IGV:'XLK', FDN:'XLK', CIBR:'XLK',
+  SOXX:'XLK', IGV:'XLK', FDN:'XLK', CIBR:'XLK', BOTZ:'XLK',
 
   VOX:'XLC',
 
-  FUTY:'XLU', PHO:'XLU'
+  FUTY:'XLU', PHO:'XLU', GRID:'XLU'
 };
 
 
