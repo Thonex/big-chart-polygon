@@ -98,23 +98,6 @@ Fixed WTD showing up after Monday Morning market open
  distinct from each other.
 =====================================================================
 -->
-
-<!--
-=====================================================================
- Big Charts V28 (2026-08-30)
-
- Default (flat) mode's yellow was #ffea5a — a pale, slightly washed-out
- yellow. Andrew asked for something closer to "web standard" yellow.
- Swapped it for #FFCC00 in the .y cell class and the matching .box.y
- legend swatch, so the legend still matches the actual band color.
- Also updated COLOR_BAND_ANCHORS_.y to the same hex for consistency,
- though that entry is currently unused (Tricolor's yellow/green ramp
- through COLOR_BAND_RGB_ instead — see V26 — and Gradient mode uses its
- own keyframes, not COLOR_BAND_ANCHORS_). Untouched: Tricolor's yellow
- band (COLOR_BAND_RGB_.y, Andrew's exact A35C00→FFC300 endpoints from
- V26) and the muted WTD .yW (#9a8c24), since neither was flagged.
-=====================================================================
--->
 <!doctype html>
 <html lang="en">
 <head>
@@ -142,7 +125,7 @@ Fixed WTD showing up after Monday Morning market open
 
     /* Historical percentile buckets */
     .g{ background:#0f3; color:#061; }
-    .y{ background:#FFCC00 !important; color:#000 !important; }
+    .y{ background:#ffea5a !important; color:#000 !important; }
     .r{ background:#b22; color:#fee; }
 
     /* WTD (muted) buckets — ~50% darker */
@@ -151,7 +134,7 @@ Fixed WTD showing up after Monday Morning market open
     .rW{ background:#541212; color:#fee; }
     .legend{display:flex;gap:8px;align-items:center}
     .box{width:14px;height:14px;border-radius:3px;border:1px solid #0003}
-    .box.g{background:#0f3}.box.y{background:#FFCC00}.box.r{background:#b22}
+    .box.g{background:#0f3}.box.y{background:#ffea5a}.box.r{background:#b22}
     .box.gW{background:#086e08}.box.yW{background:#9a8c24}.box.rW{background:#541212}
     .small{font-size:12px}
     td[data-ticker] {
@@ -855,7 +838,7 @@ function hexToHsl_(hex){
 // 'y'/'g' are kept around in case Gradient mode or a future mode wants them.
 const COLOR_BAND_ANCHORS_ = {
   r: hexToHsl_('#bb2222'),
-  y: hexToHsl_('#FFCC00'),
+  y: hexToHsl_('#ffea5a'),
   g: hexToHsl_('#00ff33')
 };
 
