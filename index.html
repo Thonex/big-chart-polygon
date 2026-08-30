@@ -801,18 +801,37 @@ function bandedColor_(val, muteFactor){
 }
 
 /* ------------------------------------------------------------------
-   Gradient: one continuous dark-red(0) → red → yellow(50) → green(100)
-   ramp with no hard band edges — hue and lightness both move smoothly
-   with the value, so there's no visual cue for exactly where 60 or 80
-   fall (that's the tradeoff Andrew flagged vs. Tricolor).
+   Gradient: one continuous ramp with no hard band edges, shaped after
+   Andrew's Gradient Map reference (dark red → red → orange at the
+   midpoint → light green → green), not a plain 0°→120° hue sweep.
+   A straight hue sweep spends too much of the 0–100 range looking
+   yellow/yellow-green; these keyframes keep red/orange dominant
+   through the low-to-mid values and only turn green in the top
+   quarter, same "sea of red, sea of orange, sea of green" feel as
+   Andrew's original framing, just continuous instead of banded.
+   Interpolates h/s/l piecewise-linearly between the bracketing
+   keyframes below.
 ------------------------------------------------------------------- */
+const COLOR_GRADIENT_KEYFRAMES_ = [
+  { v:0,   h:0,   s:65,  l:13 },  // near-black red
+  { v:15,  h:0,   s:78,  l:40 },  // vivid red
+  { v:50,  h:30,  s:95,  l:52 },  // orange (matches the reference's midpoint stop)
+  { v:78,  h:95,  s:60,  l:55 },  // light green transition
+  { v:100, h:132, s:100, l:50 }   // green — matches the flat/Tricolor green anchor
+];
+
 function gradientColor_(val, muteFactor){
   muteFactor = muteFactor==null ? 1 : muteFactor;
   const v = clamp(val, 0, 100);
-  const hue = v <= 50 ? (60*(v/50)) : (60 + 60*((v-50)/50));
-  const sat = 75;
-  const l = (16 + (55-16)*(v/100)) * muteFactor;
-  const bg = `hsl(${hue.toFixed(0)}, ${sat}%, ${l.toFixed(0)}%)`;
+  const KF = COLOR_GRADIENT_KEYFRAMES_;
+  let i = 0;
+  while (i < KF.length - 2 && v > KF[i+1].v) i++;
+  const a = KF[i], b = KF[i+1];
+  const t = (b.v === a.v) ? 0 : (v - a.v) / (b.v - a.v);
+  const h = a.h + (b.h - a.h) * t;
+  const s = a.s + (b.s - a.s) * t;
+  const l = (a.l + (b.l - a.l) * t) * muteFactor;
+  const bg = `hsl(${h.toFixed(0)}, ${s.toFixed(0)}%, ${l.toFixed(0)}%)`;
   const fg = l < 45 ? '#f2f2f2' : '#000';
   return { bg, fg };
 }
