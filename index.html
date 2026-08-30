@@ -81,6 +81,23 @@ Fixed WTD showing up after Monday Morning market open
  changed from a single constant to an object keyed by band.
 =====================================================================
 -->
+
+<!--
+=====================================================================
+ Big Charts V27 (2026-08-30)
+
+ Fixed a band/label mismatch Andrew caught: a cell showing "80" (rounded
+ up from a raw value like 79.6 by fmt()) could still render as yellow,
+ because cellStyleFor_()/cellStyleForWTD_() were banding the raw unrounded
+ value while the text showed the rounded one. Added displayRoundedVal_(),
+ which applies the exact same rounding fmt() uses, and both functions now
+ band on that instead of the raw value — so a cell's color and its label
+ can never disagree again. Affected all three color modes (Default,
+ Tricolor, Gradient) equally; not something introduced by the V25/V26
+ color-tuning passes, just newly visible once the boundary colors got more
+ distinct from each other.
+=====================================================================
+-->
 <!doctype html>
 <html lang="en">
 <head>
@@ -921,17 +938,30 @@ function gradientColor_(val, muteFactor){
 }
 
 /* ------------------------------------------------------------------
+   Bands must classify using the same rounding the cell's TEXT uses
+   (fmt()), or a cell that visually reads e.g. "80" (rounded up from a raw
+   79.6) can get colored as if it were still in the 60-79 band — exactly
+   the "80 should be green" bug Andrew reported 2026-08-30. Mirrors fmt()'s
+   own rounding rule exactly, so band and label can never disagree.
+------------------------------------------------------------------- */
+function displayRoundedVal_(val){
+  if (val == null) return val;
+  return DISPLAY_DECIMALS === 0 ? Math.round(val) : val;
+}
+
+/* ------------------------------------------------------------------
    Returns {cls, style} for a historical cell given the current
    COLOR_MODE. Default keeps using the original CSS classes untouched;
    the other two modes compute an inline style instead.
 ------------------------------------------------------------------- */
 function cellStyleFor_(val){
   if (val == null) return { cls:'', style:'' };
+  const v = displayRoundedVal_(val);
   if (COLOR_MODE === 'flat'){
-    const cls = val>=80?'g' : val>=60?'y' : 'r';
+    const cls = v>=80?'g' : v>=60?'y' : 'r';
     return { cls, style:'' };
   }
-  const c = COLOR_MODE === 'gradient' ? gradientColor_(val) : bandedColor_(val);
+  const c = COLOR_MODE === 'gradient' ? gradientColor_(v) : bandedColor_(v);
   return { cls:'', style:`background:${c.bg};color:${c.fg};` };
 }
 
@@ -943,11 +973,12 @@ function cellStyleFor_(val){
 ------------------------------------------------------------------- */
 function cellStyleForWTD_(val){
   if (val == null) return { cls:'', style:'' };
+  const v = displayRoundedVal_(val);
   if (COLOR_MODE === 'flat'){
-    const cls = val>=80?'gW' : val>=60?'yW' : 'rW';
+    const cls = v>=80?'gW' : v>=60?'yW' : 'rW';
     return { cls, style:'' };
   }
-  const c = COLOR_MODE === 'gradient' ? gradientColor_(val, 0.6) : bandedColor_(val, 0.6);
+  const c = COLOR_MODE === 'gradient' ? gradientColor_(v, 0.6) : bandedColor_(v, 0.6);
   return { cls:'', style:`background:${c.bg};color:${c.fg};` };
 }
 
