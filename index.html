@@ -30,6 +30,19 @@ CMF mode WTD bug fixed 2026-06-14
 Removed Price from Composite calc. CMF = 1.0 (100%)
 Fixed WTD showing up after Monday Morning market open
 -->
+
+<!--
+=====================================================================
+ Big Charts V23 (2026-08-30)
+
+ Added a Cell color menu (Default / Tricolor / Gradient) so the heat-map
+ cells can optionally shade darker toward the bottom of their percentile
+ range instead of every cell in a band being the same flat color.
+ See COLOR_MODE, hexToHsl_(), bandedColor_(), gradientColor_(),
+ cellStyleFor_(), and cellStyleForWTD_(). Math/ranking logic unchanged —
+ this only touches how a percentile value is painted.
+=====================================================================
+-->
 <!doctype html>
 <html lang="en">
 <head>
@@ -51,7 +64,7 @@ Fixed WTD showing up after Monday Morning market open
     tbody td {
       line-height: 1.2;
     }
-   
+
     th{position:sticky;top:58px;background:#0f1722;z-index:1}
     .cell{ min-width:18px; padding:4px 6px; }
 
@@ -98,7 +111,7 @@ Fixed WTD showing up after Monday Morning market open
       stroke: #8ab4ff;
       stroke-width: 1.25;
     }
-    
+
     td.spark path.lineCompare {
       fill: none;
       stroke: #6b6118;
@@ -109,16 +122,16 @@ Fixed WTD showing up after Monday Morning market open
     tbody tr {
       position: relative;
     }
-    
+
     body.hoverFrame tbody tr:hover {
       background: rgba(255,255,255,0.03);
-    
+
       box-shadow:
         0 0 0 4px #3aa3ff,
         0 0 10px rgba(58,163,255,.30);
-    
+
       border-radius: 4px;
-    
+
       z-index: 10;
     }
 
@@ -150,6 +163,15 @@ Fixed WTD showing up after Monday Morning market open
         </select>
       </div>
 
+      <div class="row">
+        <label class="muted small">Cell color</label>
+        <select id="colorMode" title="Default = flat tricolor (today's look). Tricolor (shaded) = same red/yellow/green bands, but darker toward the bottom of each band. Gradient = one continuous dark-red→green ramp with no hard band edges.">
+          <option value="flat">Default</option>
+          <option value="banded">Tricolor (shaded)</option>
+          <option value="gradient">Gradient</option>
+        </select>
+      </div>
+
       <div class="legend small">
         <span class="box g"></span> 80–99
         <span class="box y"></span> 60–79
@@ -159,7 +181,7 @@ Fixed WTD showing up after Monday Morning market open
           <input id="hoverFrame" type="checkbox">
           Hover frame
         </label>
-                  
+
       </div>
     </div>
 
@@ -455,7 +477,26 @@ document.body.classList.toggle(
   'hoverFrame',
   hoverEnabled
 );
-  
+
+// ===== Cell color mode (Default / Tricolor shaded / Gradient) =====
+
+const COLOR_MODE_KEY = 'heatmap_colorMode';
+let COLOR_MODE = localStorage.getItem(COLOR_MODE_KEY) || 'flat';
+
+const colorModeSel = document.getElementById('colorMode');
+
+if (colorModeSel) {
+
+  colorModeSel.value = COLOR_MODE;
+
+  colorModeSel.addEventListener('change', () => {
+    COLOR_MODE = colorModeSel.value;
+    localStorage.setItem(COLOR_MODE_KEY, COLOR_MODE);
+    render();
+  });
+
+}
+
 updateAvgOptionLabel();
 reflectMode();
 
@@ -562,7 +603,7 @@ function getFinanceLink(ticker){
 
   return `https://www.google.com/finance/beta/quote/${symbol}?window=1Y&indicator=SMA%3A25%3Aprice%2CMACD%3A5%3A10%3A9%3Aclose&type=candle`;
 }
-  
+
 
 /* ------------------------------------------------------------------
    Formats numbers according to the DISPLAY_DECIMALS setting.
@@ -662,7 +703,7 @@ function reflectMode(){ modeV1.classList.toggle('active',mode==='v1'); modeV2.cl
 /* ------------------------------------------------------------------
    Updates the sort dropdown label to match the current lookback window.
 ------------------------------------------------------------------- */
-function updateAvgOptionLabel(){ if (optAvg) optAvg.textContent=`${LOOKBACK_N}\u2011week avg (desc)`; }
+function updateAvgOptionLabel(){ if (optAvg) optAvg.textContent=`${LOOKBACK_N}‑week avg (desc)`; }
 
 /* ------------------------------------------------------------------
    Displays a temporary status message.
@@ -696,29 +737,115 @@ function clamp(x,lo,hi){ return Math.max(lo,Math.min(hi,x)); }
 ------------------------------------------------------------------- */
 function ewma(arr,lambda){ let s=null; const out={}; for(const {w,value} of arr){ const v=Number.isFinite(value)?value:null; if(v==null){ if(s!=null) out[w]=s; continue; } s=(s==null)?v:(lambda*s+(1-lambda)*v); out[w]=s; } return out; }
 
+// ======================================================
+// 4b. CELL COLOR HELPERS (Default / Tricolor shaded / Gradient)
+// ======================================================
+
 /* ------------------------------------------------------------------
-   Cross-sectional percentile ranking with proper tie handling.
-   Tied values get the SAME percentile (the average of the ranks
-   they'd occupy), instead of being arbitrarily split apart by
-   incidental sort/insertion order.
+   Converts a #rgb or #rrggbb hex color into {h,s,l} (0-360, 0-100, 0-100).
+   Used so the shaded/gradient modes can derive colors from the exact
+   same anchor hexes already used by the flat .g/.y/.r classes above,
+   instead of hand-picking a second palette that could drift out of sync.
 ------------------------------------------------------------------- */
-function rankPercentile_(pairs){
-  pairs.sort((a,b)=>a[1]-b[1]);
-  const n=pairs.length;
-  const out={};
-  if(n===0) return out;
-  if(n===1){ out[pairs[0][0]] = 50; return out; }
-  let i=0;
-  while(i<n){
-    let j=i;
-    while(j+1<n && pairs[j+1][1]===pairs[i][1]) j++;
-    let sum=0;
-    for(let k=i;k<=j;k++) sum += k*100/(n-1);
-    const avgPct = sum/(j-i+1);
-    for(let k=i;k<=j;k++) out[pairs[k][0]] = avgPct;
-    i=j+1;
+function hexToHsl_(hex){
+  let h = hex.replace('#','');
+  if (h.length === 3) h = h.split('').map(c=>c+c).join('');
+  const r = parseInt(h.slice(0,2),16)/255;
+  const g = parseInt(h.slice(2,4),16)/255;
+  const b = parseInt(h.slice(4,6),16)/255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let hue=0, sat=0; const light=(max+min)/2;
+  if (max !== min){
+    const d = max-min;
+    sat = light > 0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max){
+      case r: hue=(g-b)/d + (g<b?6:0); break;
+      case g: hue=(b-r)/d + 2; break;
+      default: hue=(r-g)/d + 4;
+    }
+    hue/=6;
   }
-  return out;
+  return { h: hue*360, s: sat*100, l: light*100 };
+}
+
+// Anchor colors = the exact hexes the flat .g/.y/.r classes already use,
+// taken as the "top of band" (brightest) end of each band's shade ramp.
+const COLOR_BAND_ANCHORS_ = {
+  r: hexToHsl_('#bb2222'),
+  y: hexToHsl_('#ffea5a'),
+  g: hexToHsl_('#00ff33')
+};
+
+const COLOR_MIN_LIGHTNESS_ = 12; // how dark the bottom of a band gets
+
+/* ------------------------------------------------------------------
+   Tricolor (shaded): same 0/60/80 bands as Default, but within each
+   band the lightness ramps from very dark at the band's low end up to
+   the normal flat-mode color at the band's high end. muteFactor lets
+   the WTD column reuse this at a lower lightness to stay visually
+   "muted" relative to the historical columns, matching the old
+   gW/yW/rW convention.
+------------------------------------------------------------------- */
+function bandedColor_(val, muteFactor){
+  muteFactor = muteFactor==null ? 1 : muteFactor;
+  let band, lo, hi;
+  if (val < 60){ band='r'; lo=0; hi=60; }
+  else if (val < 80){ band='y'; lo=60; hi=80; }
+  else { band='g'; lo=80; hi=100; }
+  const anchor = COLOR_BAND_ANCHORS_[band];
+  const frac = clamp((val-lo)/(hi-lo), 0, 1);
+  const l = (COLOR_MIN_LIGHTNESS_ + (anchor.l-COLOR_MIN_LIGHTNESS_)*frac) * muteFactor;
+  const bg = `hsl(${anchor.h.toFixed(0)}, ${anchor.s.toFixed(0)}%, ${l.toFixed(0)}%)`;
+  const fg = l < 45 ? '#f2f2f2' : '#000';
+  return { bg, fg };
+}
+
+/* ------------------------------------------------------------------
+   Gradient: one continuous dark-red(0) → red → yellow(50) → green(100)
+   ramp with no hard band edges — hue and lightness both move smoothly
+   with the value, so there's no visual cue for exactly where 60 or 80
+   fall (that's the tradeoff Andrew flagged vs. Tricolor).
+------------------------------------------------------------------- */
+function gradientColor_(val, muteFactor){
+  muteFactor = muteFactor==null ? 1 : muteFactor;
+  const v = clamp(val, 0, 100);
+  const hue = v <= 50 ? (60*(v/50)) : (60 + 60*((v-50)/50));
+  const sat = 75;
+  const l = (16 + (55-16)*(v/100)) * muteFactor;
+  const bg = `hsl(${hue.toFixed(0)}, ${sat}%, ${l.toFixed(0)}%)`;
+  const fg = l < 45 ? '#f2f2f2' : '#000';
+  return { bg, fg };
+}
+
+/* ------------------------------------------------------------------
+   Returns {cls, style} for a historical cell given the current
+   COLOR_MODE. Default keeps using the original CSS classes untouched;
+   the other two modes compute an inline style instead.
+------------------------------------------------------------------- */
+function cellStyleFor_(val){
+  if (val == null) return { cls:'', style:'' };
+  if (COLOR_MODE === 'flat'){
+    const cls = val>=80?'g' : val>=60?'y' : 'r';
+    return { cls, style:'' };
+  }
+  const c = COLOR_MODE === 'gradient' ? gradientColor_(val) : bandedColor_(val);
+  return { cls:'', style:`background:${c.bg};color:${c.fg};` };
+}
+
+/* ------------------------------------------------------------------
+   Same as cellStyleFor_ but for the WTD column, which has always been
+   a muted/darker version of the same bands (gW/yW/rW). banded/gradient
+   modes reuse the same ramp at reduced lightness so that convention
+   carries over.
+------------------------------------------------------------------- */
+function cellStyleForWTD_(val){
+  if (val == null) return { cls:'', style:'' };
+  if (COLOR_MODE === 'flat'){
+    const cls = val>=80?'gW' : val>=60?'yW' : 'rW';
+    return { cls, style:'' };
+  }
+  const c = COLOR_MODE === 'gradient' ? gradientColor_(val, 0.6) : bandedColor_(val, 0.6);
+  return { cls:'', style:`background:${c.bg};color:${c.fg};` };
 }
 
 /* ======================================================================
@@ -736,25 +863,25 @@ async function buildHeatmap(url){
     if (!res.ok) throw new Error('Fetch failed: ' + res.status);
 
     // --- parse CSV safely (keep your existing code above) ---
-    const text = (await res.text()).replace(/^\uFEFF/, '').trim();
+    const text = (await res.text()).replace(/^﻿/, '').trim();
     let rows = text.split(/\r?\n/).map(r =>
       r.split(',').map(c =>
-        c.replace(/\uFEFF/g,'').replace(/^"|"$/g,'').trim()
+        c.replace(/﻿/g,'').replace(/^"|"$/g,'').trim()
       )
     );
-    
+
     // Header
     let header = rows.shift().map(h => h.toLowerCase()).filter(Boolean);
-    
+
     // (optional) shape rows to header length
     rows = rows.map(r => (r.length > header.length ? r.slice(0, header.length) : r));
-    
+
     // Declare `need` ONCE and validate
     const need = ['date','ticker','open','high','low','close','volume'];
     for (const k of need) {
       if (!header.includes(k)) throw new Error('Missing header: ' + k);
     }
-    
+
     const idx = Object.fromEntries(header.map((h,i)=>[h,i]));
     // …rest of your function…
 
@@ -784,18 +911,18 @@ async function buildHeatmap(url){
     // --------------------------------------------------------------------
     // Find latest bar in spreadsheet
     // --------------------------------------------------------------------
-    
+
     let latestBarDate = null;
-    
+
     for (const t in byT) {
-    
+
       const arr = byT[t];
-    
+
       if (!arr || arr.length === 0)
         continue;
-    
+
       const lastBar = arr[arr.length - 1];
-    
+
       if (
           !latestBarDate ||
           lastBar.d > latestBarDate
@@ -803,13 +930,13 @@ async function buildHeatmap(url){
         latestBarDate = lastBar.d;
       }
     }
-    
+
     // The most recent week represented in the data
     const curWeekKey = latestBarDate
       ? weekKeyNext(latestBarDate)
       : null;
-    
-    
+
+
     // ====================================================
     // Recent WTD fixes (June 2026)
     //
@@ -824,19 +951,19 @@ async function buildHeatmap(url){
     // Mon-Fri  -> newest week = WTD only
     // Sat-Sun  -> newest week = completed week
     // ----------------------------------------------------
-    
+
     const now = new Date();
 
     const dow = now.getDay(); // Sun=0 ... Sat=6
-    
+
     const showCompletedWeekInHistory =
-    
+
          // Saturday
          dow === 6
-    
+
          // Sunday
       || dow === 0
-    
+
          // Monday before 10am Eastern
       || (
            dow === 1 &&
@@ -854,13 +981,13 @@ async function buildHeatmap(url){
 
     const currentTradingWeek =
       weekKeyNext(now);
-    
+
     const suppressStaleWTD =
-    
+
          dow >= 1      // Monday+
-    
+
       && dow <= 5      // through Friday
-    
+
       && curWeekKey !== currentTradingWeek;
 
     for(const t in byT){
@@ -871,7 +998,7 @@ async function buildHeatmap(url){
       const wtd={ hasData:false, mfvWTD:0, volWTD:0, todayClose:null, prevFriClose:null };
 
       const finalizeWeek=()=>{
-        const cmf= acc.vol>0 ? (acc.mfv/acc.vol) : null;
+        const cmf= acc.vol>0 ? (acc.mfv/acc.vol) : 0;
         const retLog=(prevFriClose!=null && acc.close!=null && prevFriClose>0 && acc.close>0) ? Math.log(acc.close/prevFriClose) : 0;
         weekMap[curW]={ cmf, retLog, mfvW:acc.mfv||0, volW:acc.vol||0, close:acc.close };
         prevFriClose=acc.close;
@@ -884,51 +1011,82 @@ async function buildHeatmap(url){
         let mfm=0;
         if(bar.h!==bar.l){ mfm=((bar.c-bar.l)-(bar.h-bar.c))/(bar.h-bar.l); mfm=clamp(mfm,-1,1); }
 
-        
+
 
         const vol=(Number.isFinite(bar.v)&&bar.v>0) ? bar.v : 0;
+/*
+        // debug code
+        if (
+            (t === 'ESPO' || t === 'XLC') &&
+            w === curWeekKey
+        ){
 
+            console.log({
+
+                ticker : t,
+
+                date : bar.d.toISOString().slice(0,10),
+
+                open : bar.o,
+
+                high : bar.h,
+
+                low : bar.l,
+
+                close : bar.c,
+
+                volume : vol,
+
+                mfm : mfm,
+
+                mfv : mfm * vol
+
+            });
+
+        }
+        // end of debug code
+*/
        if (!suppressStaleWTD && w === curWeekKey){
 
             wtd.hasData = true;
-        
+
             if(vol > 0){
               wtd.mfvWTD += mfm * vol;
               wtd.volWTD += vol;
             }
-        
+
             wtd.todayClose = bar.c;
             wtd.prevFriClose = acc.close ?? prevFriClose;
-        
+
             // Mon-Fri:
             // keep newest week OUT of historical
             if (!showCompletedWeekInHistory)
                 continue;
-        
+
             // Sat/Sun:
             // fall through so it ALSO goes into historical
         }
-        
-        
+
+
         if (curW && w !== curW)
             finalizeWeek();
-        
+
         curW = w;
-        
+
         if (vol > 0){
             acc.mfv += mfm * vol;
             acc.vol += vol;
         }
-        
+
         acc.close = bar.c;
-        
+
         weeks.add(w);
-        
+
         wtd.prevFriClose = prevFriClose;
       }
       if(curW) finalizeWeek();
 
-     
+
       wkByT[t]=weekMap; wtdByT[t]=wtd;
     }
 
@@ -942,43 +1100,63 @@ async function buildHeatmap(url){
     for(const w of calcWeeks){
       const pair=[];
       for(const t in wkByT){ if(!isRankable_(t)) continue; const hit=wkByT[t][w]; if(hit && Number.isFinite(hit.cmf)) pair.push([t,hit.cmf]); }
-      const ranked = rankPercentile_(pair);
-      for(const t in ranked) (pctV1[t] ||= {})[w] = ranked[t];
+      pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
+      for(let i=0;i<n;i++) (pctV1[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
     }
 
-    // Composite (historical) 
+    // Composite (historical)
     // Slow & Fast baseline (16/5, 12/3)
     const compSlow = computeCompositePct(wkByT, calcWeeks, HALF_LIFE);
     const compFast = computeCompositePct(wkByT, calcWeeks, Math.max(1, HALF_LIFE - 2));
 
+
+
+
 /*
     // ===== DEBUG WTD =====
+
     console.table(
+
       Object.entries(wtdByT)
+
         .map(([industry, v]) => ({
+
           industry,
+
           cmf:
+
             v.hasData &&
+
             v.volWTD > 0
+
               ? v.mfvWTD / v.volWTD
+
               : null,
+
           mfv: v.mfvWTD,
+
           vol: v.volWTD,
+
           prevFri: v.prevFriClose,
+
           today: v.todayClose
+
         }))
+
         .filter(r => r.cmf != null)
+
         .sort((a,b)=>b.cmf-a.cmf)
+
     );
 */
     // ===== ACTUAL WTD RANKING =====
-   
+
     const wtdPct = computeWTDPercentile(wkByT, wtdByT, calcWeeks, HALF_LIFE, weekKeyNext(new Date()));
 
     window._heat = { calcWeeks, displayWeeks, pctV1, compSlow, compFast, wkByT, wtdByT, wtdPct };
 
-    
-    
+
+
     render();
     const modeLabel=(mode==='v2'?'CMF Smoothed':'CMF Raw');
     flash(`Loaded ${Object.keys(wkByT).length} tickers • ${displayWeeks.length} weeks • Mode: ${modeLabel} • WTD ready`);
@@ -1039,8 +1217,8 @@ function computeCompositePct(wkByT, wkArr, halfLife){
     const out={};
     for(const w of wkArr){
       const pair=[]; for(const t in map){ if(!isRankable_(t)) continue; const v=map[t][w]; if(v!=null && isFin(v)) pair.push([t,v]); }
-      const ranked = rankPercentile_(pair);
-      for(const t in ranked) (out[t] ||= {})[w] = ranked[t];
+      pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
+      for(let i=0;i<n;i++) (out[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
     }
     return out;
   }
@@ -1062,8 +1240,8 @@ function computeCompositePct(wkByT, wkArr, halfLife){
   const out={};
   for(const w of wkArr){
     const pair=[]; for(const t in blendedPct){ if(!isRankable_(t)) continue; const v=blendedPct[t][w]; if(v!=null && isFin(v)) pair.push([t,v]); }
-    const ranked = rankPercentile_(pair);
-    for(const t in ranked) (out[t] ||= {})[w] = ranked[t];
+    pair.sort((a,b)=>a[1]-b[1]); const n=pair.length;
+    for(let i=0;i<n;i++) (out[pair[i][0]] ||= {})[w]= n>1 ? i*100/(n-1) : 50;
   }
   return out;
 }
@@ -1072,16 +1250,9 @@ function computeCompositePct(wkByT, wkArr, halfLife){
 /* ------------------------------------------------------------------
    Builds the current week WTD percentile rankings.
 ------------------------------------------------------------------- */
-/* ------------------------------------------------------------------
-   Builds the current week WTD percentile rankings.
-   WTD is a pure function of this week's money flow so far — it never
-   depends on price or on any prior week's close. (BLEND_PRICE is 0 in
-   the historical composite too, but WTD no longer even computes a
-   price percentile, so there's nothing left that could gate on it.)
-------------------------------------------------------------------- */
 function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
   const isFin=(x)=>Number.isFinite(x);
-  const flowNow={};
+  const flowNow={}, priceNow={};
 
   function xsecOne(map){
     const pair=[];
@@ -1090,7 +1261,11 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
       const v=map[t];
       if(v!=null && Number.isFinite(v)) pair.push([t,v]);
     }
-    return rankPercentile_(pair);
+    pair.sort((a,b)=>a[1]-b[1]);
+    const n=pair.length;
+    const out={};
+    for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
+    return out;
   }
 
   for(const t in wkByT){
@@ -1106,12 +1281,48 @@ function computeWTDPercentile(wkByT, wtdByT, wkArr, halfLife){
         (ratio == null)
           ? null
           : Math.max(-1, Math.min(1, ratio));
+
+      if (isFin(wtd.todayClose) && isFin(wtd.prevFriClose) && wtd.prevFriClose>0){
+        priceNow[t]=Math.log(wtd.todayClose / wtd.prevFriClose);
+      } else {
+        priceNow[t]=null;
+      }
+
     } else {
       flowNow[t]=null;
+      priceNow[t]=null;
     }
   }
 
-  return { map: xsecOne(flowNow) };
+  const fPct = xsecOne(flowNow);
+
+  // CMF-only mode: WTD should be CMF percentile only
+  if (mode === 'v1') {
+    return { map: fPct };
+  }
+
+  const pPct = xsecOne(priceNow);
+
+  const blended={};
+  for(const t in wkByT){
+    const f=fPct[t], p=pPct[t];
+    if (f==null || p==null) continue;
+    blended[t] = BLEND_FLOW*f + BLEND_PRICE*p;
+  }
+
+  const pair=[];
+  for(const t in blended){
+    const v=blended[t];
+    if(v!=null && Number.isFinite(v)) pair.push([t,v]);
+  }
+
+  pair.sort((a,b)=>a[1]-b[1]);
+  const n=pair.length;
+  const out={};
+
+  for(let i=0;i<n;i++) out[pair[i][0]] = n>1 ? i*100/(n-1) : 50;
+
+  return { map: out };
 }
 
 // ======================================================
@@ -1231,23 +1442,23 @@ function renderMeter(data) {
 function sparklineSVG(values, compareValues, w=72, h=18){
   const xs = values.filter(v => Number.isFinite(v));
   const ys = (compareValues||[]).filter(v => Number.isFinite(v));
-  
+
   if (xs.length < 2) return '';
-  
+
   const base1 = xs[0];
   const base2 = ys.length ? ys[0] : 1;
-  
+
   const pct1 = values.map(v => Number.isFinite(v) ? ((v/base1)-1)*100 : NaN);
   const pct2 = (compareValues||[]).map(v => Number.isFinite(v) ? ((v/base2)-1)*100 : NaN);
-  
+
   const all = [...pct1.filter(Number.isFinite), ...pct2.filter(Number.isFinite)];
-  
+
   const min = Math.min(...all);
   const max = Math.max(...all);
   const range = (max - min) || 1;
-  
+
   const n = values.length;
-  
+
   const sx = i => n > 1 ? (i/(n-1))*w : 0;
   const sy = v => h - ((v-min)/range)*h;
 
@@ -1304,7 +1515,7 @@ const INDUSTRY_BENCHMARK = {
   VOX:'XLC',
 
   FUTY:'XLU', PHO:'XLU'
-};  
+};
 
 
 /* ------------------------------------------------------------------
@@ -1347,7 +1558,7 @@ function render(){
     });
 
     const last5 = flowSeries.slice(-5);
-    
+
     // sparkline values = weekly CLOSE over last ~4 months
     const sparkVals = wkArr.slice(-SPARK_WEEKS).map(w=>{
       const hit=(wkByT[t]||{})[w];
@@ -1381,12 +1592,12 @@ function render(){
 
         }
 //end of debug code
-*/  
+*/
     const spyVals = wkArr.slice(-SPARK_WEEKS).map(w=>{
       const hit=(wkByT[benchmarkTicker]||{})[w];
       return (hit && Number.isFinite(hit.close)) ? hit.close : NaN;
     });
-/*    
+/*
 // console Debug
     if (['XOP','OIH','FCG','TAN'].includes(t)) {
       console.log(t);
@@ -1453,13 +1664,13 @@ function render(){
 
     for(const w of wkArr){
       const val=getVal(R.t,w);
-      const cls = val==null? '' : (val>=80?'g' : val>=60?'y' : 'r');
-      html += `<td class="cell ${cls}">${fmt(val)}</td>`;
+      const { cls, style } = cellStyleFor_(val);
+      html += `<td class="cell ${cls}" style="${style}">${fmt(val)}</td>`;
     }
 
     const wv=R.wtdVal;
-    const wcls = (wv==null)?'' : (wv>=80?'gW':wv>=60?'yW':'rW');
-    html += `<td class="cell wtdCol ${wcls}">${wv == null ? '–' : fmt(wv)}</td></tr>`;
+    const wStyle = cellStyleForWTD_(wv);
+    html += `<td class="cell wtdCol ${wStyle.cls}" style="${wStyle.style}">${wv == null ? '–' : fmt(wv)}</td></tr>`;
   }
 
   // ✅ OUTSIDE the loop
