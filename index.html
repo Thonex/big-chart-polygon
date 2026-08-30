@@ -817,27 +817,43 @@ function hexToHsl_(hex){
 
 // Anchor colors = the exact hexes the flat .g/.y/.r classes already use,
 // taken as the "top of band" (brightest) end of each band's shade ramp.
+// Only the 'r' entry is still consulted by bandedColor_() (see V26 below);
+// 'y'/'g' are kept around in case Gradient mode or a future mode wants them.
 const COLOR_BAND_ANCHORS_ = {
   r: hexToHsl_('#bb2222'),
   y: hexToHsl_('#ffea5a'),
   g: hexToHsl_('#00ff33')
 };
 
-// How dark the bottom of each band gets. Per-band rather than one shared
-// value (V25) — red keeps its original dramatic near-black floor, but
-// yellow and green got much higher floors so they stay legible as "yellow"
-// and "green" throughout their range instead of fading into a muddy
-// near-black that's hard to distinguish from an adjacent dark shade at a
-// glance. Tuned against Andrew's reference gradient mockup (2026-08-30).
-const COLOR_MIN_LIGHTNESS_ = { r: 12, y: 48, g: 32 };
+// How dark the bottom of the RED band gets (V25). Yellow/green used to
+// share this same floor+single-hue-anchor model (V25: y:24, g:18), but that
+// model can only ramp lightness at one fixed hue — it can't reproduce a
+// ramp whose hue also shifts, which is what Andrew's exact reference colors
+// turned out to need (see V26 below). Red keeps this model since it wasn't
+// flagged and no reference colors were given for it.
+const COLOR_MIN_LIGHTNESS_ = { r: 12 };
+
+// V26 (2026-08-30): exact endpoint colors Andrew picked in his Gradient Map
+// tool for the yellow and green bands — hand-verified hex, not estimated.
+// Note the hue itself shifts across each band (yellow: ~34°→~46°, green:
+// ~99°→~103°), not just lightness, which the old single-anchor-hue +
+// lightness-floor model couldn't represent. So these two bands now
+// interpolate straight in RGB between `lo` (band's low end) and `hi`
+// (band's high end) instead of going through COLOR_BAND_ANCHORS_/
+// COLOR_MIN_LIGHTNESS_ at all.
+const COLOR_BAND_RGB_ = {
+  y: { lo: [0xA3, 0x5C, 0x00], hi: [0xFF, 0xC3, 0x00] }, // A35C00 → FFC300
+  g: { lo: [0x29, 0x77, 0x00], hi: [0x49, 0xFF, 0x00] }  // 297700 → 49FF00
+};
 
 /* ------------------------------------------------------------------
-   Tricolor (shaded): same 0/60/80 bands as Default, but within each
-   band the lightness ramps from that band's floor (COLOR_MIN_LIGHTNESS_)
-   at the band's low end up to the normal flat-mode color at the band's
-   high end. muteFactor lets the WTD column reuse this at a lower
-   lightness to stay visually "muted" relative to the historical columns,
-   matching the old gW/yW/rW convention.
+   Tricolor (shaded): same 0/60/80 bands as Default. Yellow and green ramp
+   by interpolating directly between Andrew's exact reference RGB endpoints
+   (COLOR_BAND_RGB_) — see V26 note above for why. Red still ramps lightness
+   at one fixed hue, from COLOR_MIN_LIGHTNESS_.r up to COLOR_BAND_ANCHORS_.r's
+   natural lightness (unchanged since V25). muteFactor lets the WTD column
+   reuse either path at reduced brightness to stay visually "muted" relative
+   to the historical columns, matching the old gW/yW/rW convention.
 ------------------------------------------------------------------- */
 function bandedColor_(val, muteFactor){
   muteFactor = muteFactor==null ? 1 : muteFactor;
@@ -845,9 +861,23 @@ function bandedColor_(val, muteFactor){
   if (val < 60){ band='r'; lo=0; hi=60; }
   else if (val < 80){ band='y'; lo=60; hi=80; }
   else { band='g'; lo=80; hi=100; }
+  const frac = clamp((val-lo)/(hi-lo), 0, 1);
+
+  if (band === 'y' || band === 'g') {
+    const rgb = COLOR_BAND_RGB_[band];
+    const r = (rgb.lo[0] + (rgb.hi[0]-rgb.lo[0])*frac) * muteFactor;
+    const g = (rgb.lo[1] + (rgb.hi[1]-rgb.lo[1])*frac) * muteFactor;
+    const b = (rgb.lo[2] + (rgb.hi[2]-rgb.lo[2])*frac) * muteFactor;
+    const bg = `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+    // Perceived brightness (ITU-R BT.601 luma) picks label contrast — same
+    // role as the `l < 45` check on the HSL path below.
+    const perceivedL = (0.299*r + 0.587*g + 0.114*b) / 255 * 100;
+    const fg = perceivedL < 45 ? '#f2f2f2' : '#000';
+    return { bg, fg };
+  }
+
   const anchor = COLOR_BAND_ANCHORS_[band];
   const minL = COLOR_MIN_LIGHTNESS_[band];
-  const frac = clamp((val-lo)/(hi-lo), 0, 1);
   const l = (minL + (anchor.l-minL)*frac) * muteFactor;
   const bg = `hsl(${anchor.h.toFixed(0)}, ${anchor.s.toFixed(0)}%, ${l.toFixed(0)}%)`;
   const fg = l < 45 ? '#f2f2f2' : '#000';
