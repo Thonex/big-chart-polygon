@@ -64,6 +64,23 @@ Fixed WTD showing up after Monday Morning market open
  energy-side. Easy to move to Materials (XLB) later if preferred.
 =====================================================================
 -->
+
+<!--
+=====================================================================
+ Big Charts V25 (2026-08-30)
+
+ Tricolor (shaded) mode's lightness floor was a single global 12% shared by
+ all three bands (COLOR_MIN_LIGHTNESS_). That meant yellow ramped 12%→68%
+ and green ramped 12%→50% across their band width — a big enough swing that
+ a value near the bottom of either band rendered as a muddy near-black,
+ hard to tell apart from an adjacent dark shade at a glance. Per Andrew's
+ mockup, changed COLOR_MIN_LIGHTNESS_ to a per-band floor: red keeps its
+ original dramatic 12% (unchanged — the mockup's dark left edge matched
+ what red already did), yellow raised to 48%, green raised to 32%. Red's
+ anchor/ceiling math is untouched; only bandedColor_()'s floor lookup
+ changed from a single constant to an object keyed by band.
+=====================================================================
+-->
 <!doctype html>
 <html lang="en">
 <head>
@@ -806,15 +823,21 @@ const COLOR_BAND_ANCHORS_ = {
   g: hexToHsl_('#00ff33')
 };
 
-const COLOR_MIN_LIGHTNESS_ = 12; // how dark the bottom of a band gets
+// How dark the bottom of each band gets. Per-band rather than one shared
+// value (V25) — red keeps its original dramatic near-black floor, but
+// yellow and green got much higher floors so they stay legible as "yellow"
+// and "green" throughout their range instead of fading into a muddy
+// near-black that's hard to distinguish from an adjacent dark shade at a
+// glance. Tuned against Andrew's reference gradient mockup (2026-08-30).
+const COLOR_MIN_LIGHTNESS_ = { r: 12, y: 48, g: 32 };
 
 /* ------------------------------------------------------------------
    Tricolor (shaded): same 0/60/80 bands as Default, but within each
-   band the lightness ramps from very dark at the band's low end up to
-   the normal flat-mode color at the band's high end. muteFactor lets
-   the WTD column reuse this at a lower lightness to stay visually
-   "muted" relative to the historical columns, matching the old
-   gW/yW/rW convention.
+   band the lightness ramps from that band's floor (COLOR_MIN_LIGHTNESS_)
+   at the band's low end up to the normal flat-mode color at the band's
+   high end. muteFactor lets the WTD column reuse this at a lower
+   lightness to stay visually "muted" relative to the historical columns,
+   matching the old gW/yW/rW convention.
 ------------------------------------------------------------------- */
 function bandedColor_(val, muteFactor){
   muteFactor = muteFactor==null ? 1 : muteFactor;
@@ -823,8 +846,9 @@ function bandedColor_(val, muteFactor){
   else if (val < 80){ band='y'; lo=60; hi=80; }
   else { band='g'; lo=80; hi=100; }
   const anchor = COLOR_BAND_ANCHORS_[band];
+  const minL = COLOR_MIN_LIGHTNESS_[band];
   const frac = clamp((val-lo)/(hi-lo), 0, 1);
-  const l = (COLOR_MIN_LIGHTNESS_ + (anchor.l-COLOR_MIN_LIGHTNESS_)*frac) * muteFactor;
+  const l = (minL + (anchor.l-minL)*frac) * muteFactor;
   const bg = `hsl(${anchor.h.toFixed(0)}, ${anchor.s.toFixed(0)}%, ${l.toFixed(0)}%)`;
   const fg = l < 45 ? '#f2f2f2' : '#000';
   return { bg, fg };
