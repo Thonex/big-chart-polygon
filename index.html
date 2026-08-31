@@ -98,6 +98,38 @@ Fixed WTD showing up after Monday Morning market open
  distinct from each other.
 =====================================================================
 -->
+
+<!--
+=====================================================================
+ Big Charts V28 (2026-08-30) — tried, then reverted same day
+
+ Briefly changed Default (flat) mode's yellow from #ffea5a to #FFCC00
+ (in .y, .box.y, and COLOR_BAND_ANCHORS_.y) at Andrew's request for a
+ more "web standard" yellow. Andrew tried it and asked to revert —
+ #ffea5a was the better call after all. All three spots reverted back
+ to #ffea5a same day; net effect of V28 is none. Leaving this entry in
+ so the "we tried FFCC00 and it didn't stick" decision is on record and
+ doesn't get re-litigated later.
+=====================================================================
+-->
+
+<!--
+=====================================================================
+ Big Charts V29 (2026-08-31)
+
+ Tricolor yellow's bright (top-of-band, near 79%) end used to be FFC300 —
+ close to but not exactly the Default preset's yellow. Andrew asked for
+ the top of Tricolor's yellow ramp to land on the *exact* same yellow as
+ the Default preset (#ffea5a), so the two modes agree at the boundary
+ shade, while keeping the dark end (A35C00) untouched. Changed
+ COLOR_BAND_RGB_.y.hi from FFC300 to FFEA5A; .lo is unchanged. Since
+ bandedColor_() interpolates straight in RGB between lo and hi, this
+ also gently reshapes the whole ramp (green channel's slope changes:
+ 5C→EA rather than 5C→C3), not just the very top pixel — every value in
+ the yellow band shifts slightly brighter/warmer toward the new
+ endpoint. Green band (COLOR_BAND_RGB_.g) and red band are untouched.
+=====================================================================
+-->
 <!doctype html>
 <html lang="en">
 <head>
@@ -857,9 +889,10 @@ const COLOR_MIN_LIGHTNESS_ = { r: 12 };
 // lightness-floor model couldn't represent. So these two bands now
 // interpolate straight in RGB between `lo` (band's low end) and `hi`
 // (band's high end) instead of going through COLOR_BAND_ANCHORS_/
-// COLOR_MIN_LIGHTNESS_ at all.
+// COLOR_MIN_LIGHTNESS_ at all. (Yellow's `hi` was updated in V29 — see
+// below — to match the Default preset's yellow exactly.)
 const COLOR_BAND_RGB_ = {
-  y: { lo: [0xA3, 0x5C, 0x00], hi: [0xFF, 0xC3, 0x00] }, // A35C00 → FFC300
+  y: { lo: [0xA3, 0x5C, 0x00], hi: [0xFF, 0xEA, 0x5A] }, // A35C00 → FFEA5A (V29: hi = Default's .y yellow)
   g: { lo: [0x29, 0x77, 0x00], hi: [0x49, 0xFF, 0x00] }  // 297700 → 49FF00
 };
 
